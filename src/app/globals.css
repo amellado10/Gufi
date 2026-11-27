@@ -1,0 +1,199 @@
+@import "tailwindcss";
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Güfi design tokens: see docs/brand.md for sources.
+
+   OFFICIAL (from gufi.io stylesheet :root and assets):
+     --gufi-pink  #ff3f76   --gufi-white #ffffff   --gufi-plum #913b8b (site link hover)
+   DERIVED (tints/shades of the official pink, chosen for WCAG AA; not on the site):
+     light pinks for surfaces, a deeper pink for buttons/links with white text, and a
+     deep berry "ink" for body text. Black is intentionally not used.
+
+   Variable names follow shadcn/ui conventions so future components pick up the brand.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: light;
+
+  /* Official */
+  --gufi-pink: #ff3f76;
+  --gufi-white: #ffffff;
+  --gufi-plum: #913b8b;
+
+  /* Derived from --gufi-pink */
+  --gufi-pink-25: #fffafc; /* page background */
+  --gufi-pink-50: #fff5f8; /* sidebar */
+  --gufi-pink-100: #ffe8ef; /* hover, selected rows, soft badges */
+  --gufi-pink-200: #ffd1df; /* borders that need presence */
+  --gufi-pink-300: #f8b4c9; /* focus halo, chart grid */
+  --gufi-pink-strong: #c8104f; /* buttons & links: 5.8:1 with white */
+  --gufi-pink-deep: #a30d41; /* button hover */
+  --gufi-ink: #3d1426; /* body text: 15.8:1 on white */
+  --gufi-ink-muted: #7d4f60; /* secondary text: 6.7:1 on white, 5.7:1 on pink-100 */
+
+  /* App roles */
+  --background: var(--gufi-pink-25);
+  --foreground: var(--gufi-ink);
+  --card: var(--gufi-white);
+  --card-foreground: var(--gufi-ink);
+  --popover: var(--gufi-white);
+  --popover-foreground: var(--gufi-ink);
+  --primary: var(--gufi-pink-strong);
+  --primary-foreground: var(--gufi-white);
+  --primary-hover: var(--gufi-pink-deep);
+  --secondary: var(--gufi-pink-100);
+  --secondary-foreground: var(--gufi-ink);
+  --muted: var(--gufi-pink-50);
+  --muted-foreground: var(--gufi-ink-muted);
+  --accent: var(--gufi-pink-100);
+  --accent-foreground: var(--gufi-ink);
+  --brand: var(--gufi-pink);
+  --link: var(--gufi-pink-strong);
+  --link-hover: var(--gufi-plum);
+  --border: #f6dde5;
+  --border-strong: var(--gufi-pink-200);
+  --input: #efc9d6;
+  --ring: var(--gufi-pink);
+  --sidebar: var(--gufi-pink-50);
+  --sidebar-foreground: var(--gufi-ink);
+  --sidebar-accent: var(--gufi-pink-100);
+
+  /* Status: always paired with an icon and a word, never color alone */
+  --status-good: #13795b;
+  --status-warning: #9a5b00;
+  --status-critical: #b42318;
+  --status-info: var(--gufi-pink-strong);
+  --status-neutral: var(--gufi-ink-muted);
+
+  /* Shape and motion (site: 8px buttons, 0.4s ease-out, button fill 1s cubic-bezier) */
+  --radius: 8px;
+  --radius-card: 12px;
+  --ease-gufi: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --shadow-card: 0 1px 2px rgb(61 20 38 / 0.04), 0 1px 1px rgb(61 20 38 / 0.03);
+  --shadow-pop: 0 12px 32px rgb(61 20 38 / 0.12), 0 2px 6px rgb(61 20 38 / 0.06);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-brand: var(--brand);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-pink-25: var(--gufi-pink-25);
+  --color-pink-50: var(--gufi-pink-50);
+  --color-pink-100: var(--gufi-pink-100);
+  --color-pink-200: var(--gufi-pink-200);
+  --color-pink-300: var(--gufi-pink-300);
+  --color-status-good: var(--status-good);
+  --color-status-warning: var(--status-warning);
+  --color-status-critical: var(--status-critical);
+  --color-status-info: var(--status-info);
+  --color-status-neutral: var(--status-neutral);
+  --radius-sm: 6px;
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius-card);
+  --radius-xl: 16px;
+  --ease-gufi: var(--ease-gufi);
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.011em;
+}
+
+/* Site headings: Inter Display (opsz 32), bold, tight tracking */
+h1,
+h2,
+h3,
+.display {
+  font-variation-settings: "opsz" 32;
+  letter-spacing: -0.025em;
+}
+
+::selection {
+  background: var(--gufi-pink-200);
+  color: var(--gufi-ink);
+}
+
+/* Visible keyboard focus everywhere (pink ring, 3.4:1 against white) */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Small label above headings (site .nav_title: small, muted, tight) */
+.eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted-foreground);
+}
+
+/* The official wordmark is a white PNG. As a mask it keeps its exact geometry and takes
+   the brand pink (or white on pink surfaces). */
+.gufi-wordmark {
+  background-color: var(--wordmark-color, var(--gufi-pink));
+  -webkit-mask: url("/brand/gufi-wordmark-white.png") left center / contain no-repeat;
+  mask: url("/brand/gufi-wordmark-white.png") left center / contain no-repeat;
+  aspect-ratio: 1166 / 496;
+}
+
+/* Site button: a pink fill sweeps in from the left on hover (gufi.io .button_bg). */
+.btn-sweep {
+  background-image: linear-gradient(var(--gufi-pink-100), var(--gufi-pink-100));
+  background-repeat: no-repeat;
+  background-size: 0% 100%;
+  transition:
+    background-size 0.8s var(--ease-gufi),
+    transform 0.3s var(--ease-gufi),
+    box-shadow 0.3s var(--ease-gufi);
+}
+.btn-sweep:hover {
+  background-size: 100% 100%;
+}
+
+/* Signature corner from the site's project cards (8px 8px 80px 0) */
+.gufi-corner {
+  border-radius: 12px 12px 56px 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

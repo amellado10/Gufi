@@ -6,6 +6,7 @@ import { ArrowDown, ArrowUp, Eye, Plus, Send, Trash, TriangleExclamationPoint } 
 import { formatMoney } from "@/lib/money";
 import { parseMoneyToCents } from "@/features/pipeline/model";
 import { saveDraftAction, sendProposalAction } from "./actions";
+import { ClaudePanel, type DraftResult } from "./claude-panel";
 import { lineTotalCents, parsePercent, parseQuantity, readyToSend, scheduleAmounts, SECTION_HINTS, SECTION_KEYS, SECTION_TITLES, taxCents, type Lang, type SectionKey } from "./model";
 
 type Item = { key: string; name: string; description: string; quantity: string; unit_price: string; optional: boolean };
@@ -25,7 +26,21 @@ const k = () => `row-${++seq}`;
 const input = "w-full rounded-md border border-input bg-card px-2.5 text-sm placeholder:text-muted-foreground/70 focus-visible:border-brand aria-[invalid=true]:border-status-critical";
 const label = "mb-1 block text-xs font-semibold text-muted-foreground";
 
-export function ProposalEditor({ proposalId, versionId, initial, today, currency }: { proposalId: string; versionId: string; initial: EditorInitial; today: string; currency: string }) {
+export function ProposalEditor({
+  proposalId,
+  versionId,
+  initial,
+  today,
+  currency,
+  aiEnabled,
+}: {
+  proposalId: string;
+  versionId: string;
+  initial: EditorInitial;
+  today: string;
+  currency: string;
+  aiEnabled: boolean;
+}) {
   const [title, setTitle] = useState(initial.title);
   const [language, setLanguage] = useState<Lang>(initial.language);
   const [taxBps, setTaxBps] = useState(initial.tax_rate_bps);
@@ -106,6 +121,26 @@ export function ProposalEditor({ proposalId, versionId, initial, today, currency
     );
   };
 
+  // Merge a Claude draft into the editor (unsaved until "Save draft").
+  const applyDraft = (draft: DraftResult, opts: { replaceSections: boolean; addItems: boolean }) => {
+    setSections((cur) => {
+      const next = { ...cur };
+      for (const key of SECTION_KEYS) {
+        const suggested = draft.sections[key]?.trim();
+        if (suggested && (opts.replaceSections || !cur[key]?.trim())) next[key] = suggested;
+      }
+      return next;
+    });
+    if (opts.addItems && draft.items.length) {
+      setItems((cur) => [
+        ...cur.filter((i) => i.name.trim() || i.unit_price.trim()),
+        ...draft.items.map((i) => ({ key: k(), name: i.name, description: i.description, quantity: i.quantity, unit_price: i.unit_price, optional: false })),
+      ]);
+    }
+    setDirty(true);
+    setStatus({ tone: "ok", text: "Claude's draft is in the editor. Review it, then Save draft." });
+  };
+
   const moveItem = (i: number, d: -1 | 1) =>
     touch(setItems)(((list) => {
       const next = [...list];
@@ -116,6 +151,8 @@ export function ProposalEditor({ proposalId, versionId, initial, today, currency
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
       <div className="space-y-6">
+        <ClaudePanel proposalId={proposalId} enabled={aiEnabled} onDraft={applyDraft} />
+
         {/* Settings */}
         <section className="rounded-lg border border-border bg-card p-5 shadow-card">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -212,8 +249,8 @@ export function ProposalEditor({ proposalId, versionId, initial, today, currency
                   <span className={label}>Price</span>
                   <input
                     inputMode="decimal"
-                    placeholder="1,850.00"
-                    className={`${input} tabular h-9 text-right`}
+                    placeholder="Set a price"
+                    className={`${input} tabular h-9 text-right ${!it.unit_price.trim() ? "border-status-warning bg-status-warning/5" : ""}`}
                     value={it.unit_price}
                     aria-invalid={Boolean(issueFor(["items", i, "unit_price"]))}
                     onChange={(e) => touch(setItems)(items.map((x) => (x.key === it.key ? { ...x, unit_price: e.target.value } : x)))}

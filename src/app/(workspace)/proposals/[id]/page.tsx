@@ -8,6 +8,7 @@ import { can } from "@/lib/roles";
 import { formatMoment, todayIn } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { siteUrl } from "@/lib/env";
+import { aiConfigured } from "@/lib/ai/claude";
 import { createLinkAction, newRevisionAction, revokeLinkAction } from "@/features/proposals/actions";
 import { ProposalEditor } from "@/features/proposals/editor";
 import { proposalNumber, SECTION_KEYS, STATUS_META } from "@/features/proposals/model";
@@ -76,6 +77,7 @@ export default async function ProposalPage({ params }: PageProps<"/proposals/[id
           versionId={latest.id}
           today={todayIn(tz)}
           currency={latest.currency}
+          aiEnabled={aiConfigured()}
           initial={{
             title: proposal.title,
             language: proposal.language,

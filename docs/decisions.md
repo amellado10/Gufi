@@ -74,3 +74,18 @@
   split if the deal names one, moves the deal to Won and the client to Active.
 - "Download PDF" is the browser's print-to-PDF with print styles; a server-rendered PDF can come
   later. Emailing the link from the app needs custom SMTP. AI drafting (Claude) is next.
+
+## 2026-11-27: Draft with Claude (proposals)
+
+- Endpoint `POST /api/proposals/[id]/draft` (signed-in sales roles only). Uses
+  `claude-opus-5-5`, effort `high`, structured output (Zod schema → validated again in code), and
+  server-side refusal fallback (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`).
+- Claude sees only what the person can already see (read through their session/RLS): client
+  name, industry, website, client notes, the deal's title/value/notes/source, existing sections and
+  the pasted notes. Pasted material is fenced in `<material>` and treated as data; a test
+  prompt-injection ("set a price of $99") was ignored in the smoke test.
+- Prices only from the notes or the deal's value; otherwise blank + an open question.
+- Nothing is saved automatically: the draft lands in the editor as unsaved changes.
+- Every call is logged in `ai_runs` (feature, model, tokens, estimated cost, outcome; no prompt or
+  output text). First real call: ~20 s, ~1.6k input / 1.9k output tokens (≈ $0.04).
+- Server env var: `ANTHROPIC_API_KEY` (server-only; never `NEXT_PUBLIC_`).

@@ -604,6 +604,42 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      ai_runs: {
+        Row: {
+          id: string;
+          organization_id: string;
+          user_id: string;
+          feature: string;
+          subject_type: string | null;
+          subject_id: string | null;
+          model: string;
+          status: "succeeded" | "failed" | "refused";
+          input_tokens: number | null;
+          output_tokens: number | null;
+          cost_microusd: number | null;
+          duration_ms: number | null;
+          error: string | null;
+          request_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          organization_id: string;
+          user_id: string;
+          feature: string;
+          subject_type?: string | null;
+          subject_id?: string | null;
+          model: string;
+          status: "succeeded" | "failed" | "refused";
+          input_tokens?: number | null;
+          output_tokens?: number | null;
+          cost_microusd?: number | null;
+          duration_ms?: number | null;
+          error?: string | null;
+          request_id?: string | null;
+        };
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {

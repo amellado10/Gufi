@@ -45,7 +45,8 @@ export const dealInput = z
     contact_id: optionalUuid,
     source: z.enum(LEAD_SOURCES.map((s) => s.value) as [LeadSource, ...LeadSource[]]).default("other"),
     source_detail: optionalText(200),
-    brought_by_partner_id: optionalUuid,
+    // "" = not set, "gufi", "none", or "partner:<uuid>"
+    brought_by: z.string().trim().max(60).optional().default(""),
     expected_close_on: optionalDate,
     next_follow_up_on: optionalDate,
     lost_reason: optionalText(1000),
@@ -55,13 +56,33 @@ export const dealInput = z
     const hasClient = Boolean(v.client_id && z.uuid().safeParse(v.client_id).success);
     if (!hasClient && !v.new_client_name) ctx.addIssue({ code: "custom", path: ["client_id"], message: "Choose a client or enter a new company name." });
     if (parseMoneyToCents(v.value) === "invalid") ctx.addIssue({ code: "custom", path: ["value"], message: "Enter an amount like 2500 or 2,500.00." });
+    if (parseBroughtBy(v.brought_by) === "invalid") ctx.addIssue({ code: "custom", path: ["brought_by"], message: "Choose who brought the client in." });
   })
   .transform((v) => ({
     ...v,
     client_id: v.client_id && z.uuid().safeParse(v.client_id).success ? v.client_id : null,
     value_cents: parseMoneyToCents(v.value) as number | null,
+    ...(parseBroughtBy(v.brought_by) as Exclude<ReturnType<typeof parseBroughtBy>, "invalid">),
   }));
 export type DealInput = z.infer<typeof dealInput>;
+
+// "Brought in by": a partner (gets the 15%), Güfi itself (paid media, website…), nobody, or not set.
+export type OriginationKind = Enums<"origination_kind">;
+export function parseBroughtBy(value: string): { brought_by_kind: OriginationKind | null; brought_by_partner_id: string | null } | "invalid" {
+  if (!value) return { brought_by_kind: null, brought_by_partner_id: null };
+  if (value === "gufi" || value === "none") return { brought_by_kind: value, brought_by_partner_id: null };
+  const id = value.startsWith("partner:") ? value.slice(8) : "";
+  return z.uuid().safeParse(id).success ? { brought_by_kind: "partner", brought_by_partner_id: id } : "invalid";
+}
+export function broughtByValue(kind: OriginationKind | null, partnerId: string | null): string {
+  return kind === "partner" && partnerId ? `partner:${partnerId}` : (kind ?? "");
+}
+export function broughtByLabel(kind: OriginationKind | null, partnerName: string | undefined): string | null {
+  if (kind === "gufi") return "Güfi (15% stays with Güfi)";
+  if (kind === "none") return "None";
+  if (kind === "partner") return partnerName ?? "A partner";
+  return null;
+}
 
 // Weighted pipeline: Σ value × stage probability, rounded half-up to the cent. Open stages only.
 export function weightedValue(deals: { value_cents: number | null; probability_bps: number; kind: StageKind }[]): number {

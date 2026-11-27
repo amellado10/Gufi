@@ -7,6 +7,8 @@ import { LEAD_SOURCES } from "./model";
 
 type Option = { value: string; label: string };
 
+const NEW_CLIENT = "__new__";
+
 export function DealForm({
   action,
   defaults = {},
@@ -24,7 +26,7 @@ export function DealForm({
   contacts: { value: string; label: string; clientId: string }[];
   stages: (Option & { kind: string })[];
   owners: Option[];
-  partners: Option[]; // empty when the user can't see partners
+  partners: Option[];
   cancelHref: string;
   submitLabel: string;
 }) {
@@ -51,15 +53,22 @@ export function DealForm({
               name="client_id"
               required
               value={clientId}
-              onChange={(ev) => setClientId(ev.target.value)}
+              onChange={(ev) => {
+                if (ev.target.value === NEW_CLIENT) {
+                  setNewClient(true);
+                  setClientId("");
+                } else setClientId(ev.target.value);
+              }}
               error={e.client_id}
-              options={clients}
+              options={[...clients, { value: NEW_CLIENT, label: "+ New client" }]}
               placeholder="Choose a client"
             />
           )}
-          <button type="button" onClick={() => setNewClient(!newClient)} className="mt-1 text-xs font-medium text-link hover:underline">
-            {newClient ? "Choose an existing client instead" : "It's a new company"}
-          </button>
+          {newClient && (
+            <button type="button" onClick={() => setNewClient(false)} className="mt-1 text-xs font-medium text-link hover:underline">
+              Choose an existing client instead
+            </button>
+          )}
         </div>
         <TextField label="Estimated value (USD, before ITBMS)" name="value" inputMode="decimal" defaultValue={v("value")} error={e.value} placeholder="2,500" />
         <SelectField label="Stage" name="stage_id" value={stageId} onChange={(ev) => setStageId(ev.target.value)} error={e.stage_id} options={stages} />
@@ -79,17 +88,19 @@ export function DealForm({
         )}
         <SelectField label="Source" name="source" defaultValue={v("source") || "other"} error={e.source} options={LEAD_SOURCES} />
         <TextField label="Source detail" name="source_detail" defaultValue={v("source_detail")} error={e.source_detail} placeholder="Who referred them, which campaign…" />
-        {partners.length > 0 && (
-          <SelectField
-            label="Brought in by"
-            name="brought_by_partner_id"
-            defaultValue={v("brought_by_partner_id")}
-            error={e.brought_by_partner_id}
-            options={partners}
-            placeholder="Not set"
-            hint="Gets the 15% in the split."
-          />
-        )}
+        <SelectField
+          label="Brought in by"
+          name="brought_by"
+          defaultValue={v("brought_by")}
+          error={e.brought_by}
+          options={[
+            { value: "gufi", label: "Güfi (paid media, website, inbound…)" },
+            { value: "none", label: "None" },
+            ...partners.map((p) => ({ value: `partner:${p.value}`, label: p.label })),
+          ]}
+          placeholder="Not set"
+          hint="A partner gets the 15% in the split; with Güfi or None it stays with Güfi."
+        />
         <TextField label="Next follow-up" name="next_follow_up_on" type="date" defaultValue={v("next_follow_up_on")} error={e.next_follow_up_on} />
         <TextField label="Expected close" name="expected_close_on" type="date" defaultValue={v("expected_close_on")} error={e.expected_close_on} />
       </div>

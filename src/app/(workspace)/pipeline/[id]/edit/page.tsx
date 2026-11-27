@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requirePermission } from "@/lib/auth";
 import { updateDealAction } from "@/features/pipeline/actions";
 import { DealForm } from "@/features/pipeline/deal-form";
+import { broughtByValue } from "@/features/pipeline/model";
 import { getDeal, listContactOptions, listPartnerOptions, listStages } from "@/features/pipeline/queries";
 import { clientOptions } from "@/features/clients/queries";
 import { getRoster, memberLabel } from "@/features/workspace/roster";
@@ -41,7 +42,7 @@ export default async function EditDealPage({ params }: PageProps<"/pipeline/[id]
             contact_id: deal.contact_id,
             source: deal.source,
             source_detail: deal.source_detail,
-            brought_by_partner_id: deal.brought_by_partner_id,
+            brought_by: broughtByValue(deal.brought_by_kind, deal.brought_by_partner_id),
             expected_close_on: deal.expected_close_on,
             next_follow_up_on: deal.next_follow_up_on,
             lost_reason: deal.lost_reason,

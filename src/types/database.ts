@@ -354,6 +354,7 @@ export type Database = {
           source: Database["public"]["Enums"]["lead_source"];
           source_detail: string | null;
           brought_by_partner_id: string | null;
+          brought_by_kind: Database["public"]["Enums"]["origination_kind"] | null;
           expected_close_on: string | null;
           next_follow_up_on: string | null;
           closed_on: string | null;
@@ -375,6 +376,7 @@ export type Database = {
           source?: Database["public"]["Enums"]["lead_source"];
           source_detail?: string | null;
           brought_by_partner_id?: string | null;
+          brought_by_kind?: Database["public"]["Enums"]["origination_kind"] | null;
           expected_close_on?: string | null;
           next_follow_up_on?: string | null;
           closed_on?: string | null;
@@ -449,6 +451,7 @@ export type Database = {
       project_status: "planning" | "active" | "on_hold" | "completed" | "cancelled";
       split_role: "origination" | "delivery";
       stage_kind: "open" | "won" | "lost";
+      origination_kind: "partner" | "gufi" | "none";
       lead_source: "referral" | "partner" | "website" | "outbound" | "marketing" | "existing_client" | "other";
       activity_kind: "note" | "call" | "email" | "meeting" | "stage_change";
     };

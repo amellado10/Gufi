@@ -72,7 +72,7 @@ export async function listActivities(organizationId: string, opts: { opportunity
   return data ?? [];
 }
 
-// Partners for "who brought the client" (admins only, by RLS; others get an empty list).
+// Partners for "who brought the client" (names are readable by sales roles; pay stays admins-only).
 export async function listPartnerOptions(organizationId: string) {
   const supabase = await createClient();
   const { data } = await supabase.from("partners").select("id, full_name").eq("organization_id", organizationId).order("full_name");

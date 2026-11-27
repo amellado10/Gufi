@@ -81,6 +81,27 @@ describe("deals", () => {
     });
   });
 
+  it("'brought in by' is a partner, Güfi, none or not set, never contradictory", async () => {
+    const partner = (await one<{ id: string }>(`insert into partners (organization_id, full_name) values ($1, 'Daniel') returning id`, [org])).id;
+    await as(db, u.pm, async () => {
+      const ins = (kind: string | null, partnerId: string | null) =>
+        db.query(`insert into opportunities (organization_id, client_id, title, stage_id, brought_by_kind, brought_by_partner_id) values ($1, $2, 'x', $3, $4, $5)`, [
+          org,
+          client,
+          stage.new,
+          kind,
+          partnerId,
+        ]);
+      await ins("partner", partner);
+      await ins("gufi", null);
+      await ins("none", null);
+      await ins(null, null);
+      await expect(ins("partner", null)).rejects.toThrow(/check constraint/);
+      await expect(ins("gufi", partner)).rejects.toThrow(/check constraint/);
+      await expect(ins(null, partner)).rejects.toThrow(/check constraint/);
+    });
+  });
+
   it("can't use another organization's client or stage", async () => {
     await as(db, u.pm, async () => {
       await expect(db.query(`insert into opportunities (organization_id, client_id, title, stage_id) values ($1, $2, 'x', $3)`, [org, clientB, stage.new])).rejects.toThrow(/foreign key/);

@@ -80,7 +80,7 @@ describe("who sees what", () => {
     await as(db, u.finance, async () => {
       expect(await count(`select * from project_finances`)).toBe(1);
       expect((await db.query<{ key: string }>(`select key from financial_snapshots`)).rows.map((r) => r.key)).toEqual(["test-2026"]);
-      expect(await count(`select * from partners`)).toBe(0);
+      expect(await count(`select * from partners`)).toBe(2); // names only, to attribute deals
       expect(await count(`select * from project_splits`)).toBe(0);
       expect(await count(`select * from partner_payouts`)).toBe(0);
     });
@@ -99,11 +99,23 @@ describe("who sees what", () => {
   it("the delivery team and marketing see no money at all, even on their own project", async () => {
     for (const who of [u.team, u.marketing]) {
       await as(db, who, async () => {
-        for (const t of ["project_finances", "partners", "project_splits", "partner_payouts", "financial_snapshots"]) {
+        for (const t of ["project_finances", "project_splits", "partner_payouts", "financial_snapshots"]) {
           expect(await count(`select * from ${t}`), t).toBe(0);
         }
       });
     }
+    await as(db, u.team, async () => {
+      expect(await count(`select * from partners`)).toBe(0);
+    });
+  });
+
+  it("sales roles see partner names (to attribute deals) but can't change partners", async () => {
+    await as(db, u.marketing, async () => {
+      expect(await count(`select * from partners`)).toBe(2);
+      const res = await db.query(`update partners set full_name = 'Renamed' where id = $1`, [partnerD]);
+      expect(res.affectedRows ?? 0).toBe(0);
+      await expect(db.query(`insert into partners (organization_id, full_name) values ($1, 'Sneaky')`, [org])).rejects.toThrow(/row-level security/);
+    });
   });
 
   it("nobody can write snapshots from the app", async () => {

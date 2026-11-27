@@ -9,7 +9,7 @@ import { formatDay, formatMoment, todayIn } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { addActivityAction, createProjectFromDealAction, deleteActivityAction } from "@/features/pipeline/actions";
 import { ActivityForm } from "@/features/pipeline/activity-form";
-import { followUpState, sourceLabel } from "@/features/pipeline/model";
+import { broughtByLabel, followUpState, sourceLabel } from "@/features/pipeline/model";
 import { getDeal, listActivities, listPartnerOptions, listStages } from "@/features/pipeline/queries";
 import { StageSwitcher } from "@/features/pipeline/stage-switcher";
 import { getRoster, memberLabel } from "@/features/workspace/roster";
@@ -41,7 +41,7 @@ export default async function DealPage({ params }: PageProps<"/pipeline/[id]">) 
   const today = todayIn(ws.organization.timezone);
   const canWrite = can(ws.role, "pipeline:write");
   const fu = stage?.kind === "open" ? followUpState(deal.next_follow_up_on, today) : "none";
-  const broughtBy = partners.find((p) => p.value === deal.brought_by_partner_id)?.label;
+  const broughtBy = broughtByLabel(deal.brought_by_kind, partners.find((p) => p.value === deal.brought_by_partner_id)?.label);
 
   return (
     <>

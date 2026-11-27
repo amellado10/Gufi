@@ -39,6 +39,7 @@ function dealFields(d: DealInput) {
     contact_id: d.contact_id,
     source: d.source,
     source_detail: d.source_detail,
+    brought_by_kind: d.brought_by_kind,
     brought_by_partner_id: d.brought_by_partner_id,
     expected_close_on: d.expected_close_on,
     next_follow_up_on: d.next_follow_up_on,

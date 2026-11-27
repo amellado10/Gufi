@@ -50,3 +50,19 @@ describe("dealInput", () => {
     expect(dealInput.safeParse({ title: "X", stage_id: stage, new_client_name: "A", value: "lots" }).success).toBe(false);
   });
 });
+
+describe("brought in by", () => {
+  const id = "6b0f3a52-7c1e-4a8e-9d55-2f6b1c3e9a10";
+  it("reads not set, Güfi, none and a partner", async () => {
+    const { parseBroughtBy, broughtByValue } = await import("@/features/pipeline/model");
+    expect(parseBroughtBy("")).toEqual({ brought_by_kind: null, brought_by_partner_id: null });
+    expect(parseBroughtBy("gufi")).toEqual({ brought_by_kind: "gufi", brought_by_partner_id: null });
+    expect(parseBroughtBy("none")).toEqual({ brought_by_kind: "none", brought_by_partner_id: null });
+    expect(parseBroughtBy(`partner:${id}`)).toEqual({ brought_by_kind: "partner", brought_by_partner_id: id });
+    expect(parseBroughtBy("partner:nope")).toBe("invalid");
+    expect(parseBroughtBy("someone")).toBe("invalid");
+    expect(broughtByValue("partner", id)).toBe(`partner:${id}`);
+    expect(broughtByValue("gufi", null)).toBe("gufi");
+    expect(broughtByValue(null, null)).toBe("");
+  });
+});

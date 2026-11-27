@@ -8,7 +8,7 @@ export async function listClients(organizationId: string, opts: { q?: string; st
   const supabase = await createClient();
   let query = supabase
     .from("clients")
-    .select("id, name, domain, industry, status, owner_id, updated_at, projects(id, status)")
+    .select("id, name, domain, industry, status, owner_id, updated_at, projects(id, status), contacts(full_name, email, phone, is_primary)")
     .eq("organization_id", organizationId)
     .order("name");
   if (opts.status) query = query.eq("status", opts.status);

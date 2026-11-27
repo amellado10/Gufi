@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CLIENT_STATUSES } from "./status";
+import { tidyPhone } from "@/lib/phone";
 
 // "https://www.Example.com/shop?x" → { website: "https://www.example.com/shop", domain: "example.com" }
 export function normalizeWebsite(input: string | null | undefined): { website: string | null; domain: string | null } | { error: string } {
@@ -55,8 +56,34 @@ export const contactInput = z.object({
     .pipe(z.email("Enter a valid email address.").nullable())
     .optional()
     .transform((v) => v ?? null),
-  phone: optionalText(40),
+  phone: z
+    .string()
+    .optional()
+    .transform((v, ctx) => {
+      const t = tidyPhone(v);
+      if (t === "invalid") {
+        ctx.addIssue({ code: "custom", message: "Enter a phone number, like 6123-4567 or +1 305 555 0100." });
+        return z.NEVER;
+      }
+      return t;
+    }),
   title: optionalText(120),
 });
+
+// Optional primary contact entered together with a new client (fields prefixed "contact_").
+export function contactFromClientForm(values: Record<string, string>) {
+  const fields = { full_name: values.contact_name ?? "", email: values.contact_email ?? "", phone: values.contact_phone ?? "", title: values.contact_title ?? "" };
+  const any = Object.values(fields).some((v) => v.trim());
+  if (!any) return { contact: null, errors: null };
+  const parsed = contactInput.safeParse(fields);
+  if (!parsed.success) {
+    const f = z.flattenError(parsed.error).fieldErrors;
+    return {
+      contact: null,
+      errors: { contact_name: f.full_name, contact_email: f.email, contact_phone: f.phone, contact_title: f.title },
+    };
+  }
+  return { contact: parsed.data, errors: null };
+}
 
 export { optionalText, optionalUuid };

@@ -46,7 +46,10 @@ export function ProposalEditor({
   const [taxBps, setTaxBps] = useState(initial.tax_rate_bps);
   const [validUntil, setValidUntil] = useState(initial.valid_until);
   const [sections, setSections] = useState(initial.sections);
-  const [items, setItems] = useState<Item[]>(() => initial.items.map((i) => ({ ...i, key: k() })));
+  // A new proposal starts with one empty line, so there's somewhere to type a price right away.
+  const [items, setItems] = useState<Item[]>(() =>
+    initial.items.length ? initial.items.map((i) => ({ ...i, key: k() })) : [{ key: k(), name: "", description: "", quantity: "1", unit_price: "", optional: false }],
+  );
   const [milestones, setMilestones] = useState<Milestone[]>(() => initial.milestones.map((m) => ({ ...m, key: k() })));
   const [dirty, setDirty] = useState(false);
   const [status, setStatus] = useState<{ tone: "ok" | "error"; text: string; issues?: { path: (string | number)[]; message: string }[] } | null>(null);
@@ -97,7 +100,9 @@ export function ProposalEditor({
       tax_rate_bps: taxBps,
       valid_until: validUntil,
       sections: SECTION_KEYS.map((key) => ({ key, body: sections[key] ?? "" })),
-      items: items.map((it) => ({ name: it.name, description: it.description, quantity: it.quantity, unit_price: it.unit_price, optional: it.optional })),
+      items: items
+        .filter((it) => it.name.trim() || it.unit_price.trim() || it.description.trim()) // untouched empty lines aren't saved
+        .map((it) => ({ name: it.name, description: it.description, quantity: it.quantity, unit_price: it.unit_price, optional: it.optional })),
       milestones: milestones.map((m) => ({ label: m.label, percent: m.percent, due: m.due })),
     });
 
@@ -279,7 +284,7 @@ export function ProposalEditor({
             <button
               type="button"
               onClick={() => touch(setItems)([...items, { key: k(), name: "", description: "", quantity: "1", unit_price: "", optional: false }])}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-link hover:underline"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border-strong bg-card px-3 text-sm font-semibold hover:bg-accent"
             >
               <Plus aria-hidden className="size-4" /> Add a line
             </button>
@@ -408,8 +413,8 @@ export function ProposalEditor({
             Send this proposal?
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            This version will be locked (changes need a new revision) and you&apos;ll get a secure link to send the client. If it&apos;s linked to a deal, the deal moves to
-            &quot;Proposal sent&quot;.
+            This version will be locked (changes need a new revision) and you&apos;ll get a secure link to send by email or WhatsApp. It goes into the pipeline as
+            &quot;Proposal sent&quot; (a deal is created if it doesn&apos;t have one yet).
           </p>
           <div className="mt-5 flex justify-end gap-2">
             <button type="button" onClick={() => sendDialog.current?.close()} className="h-10 rounded-md px-4 text-sm font-semibold hover:bg-accent">

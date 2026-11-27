@@ -27,7 +27,7 @@ export function ContactForm({
         <TextField label="Name" name="full_name" required defaultValue={v("full_name")} error={e.full_name} />
         <TextField label="Role / title" name="title" defaultValue={v("title")} error={e.title} placeholder="Founder, marketing lead…" />
         <TextField label="Email" name="email" type="email" defaultValue={v("email")} error={e.email} />
-        <TextField label="Phone" name="phone" type="tel" defaultValue={v("phone")} error={e.phone} />
+        <TextField label="Phone / WhatsApp" name="phone" type="tel" defaultValue={v("phone")} error={e.phone} placeholder="6123-4567" hint="Without a country code, Panama (+507) is assumed." />
       </div>
       <SubmitButton variant={defaults ? "primary" : "secondary"} size={defaults ? "md" : "sm"} pendingLabel="Saving…">
         {submitLabel}

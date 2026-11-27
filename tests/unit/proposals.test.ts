@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { editorPayload, scheduleAmounts, lineTotalCents, parsePercent, parseQuantity, readyToSend, taxCents, totals } from "@/features/proposals/model";
+import { editorPayload, scheduleAmounts, shareMessage, lineTotalCents, parsePercent, parseQuantity, readyToSend, taxCents, totals } from "@/features/proposals/model";
 
 describe("proposal money (mirrors the database)", () => {
   it("line totals round half-up", () => {
@@ -62,5 +62,15 @@ describe("payment schedule amounts", () => {
     expect(scheduleAmounts(100001, [3333, 3333, 3334])).toEqual([33330, 33330, 33341]);
     const parts = scheduleAmounts(208651, [5000, 5000]);
     expect(parts[0] + parts[1]).toBe(208651);
+  });
+});
+
+describe("share message", () => {
+  it("greets by first name, in the proposal's language, with the link", () => {
+    const es = shareMessage("es", { contactName: "Camila Ejemplo (ejemplo)", title: "Tienda Shopify", number: 7, link: "https://os.gufi.io/p/abc", sender: "Adrián" });
+    expect(es.subject).toBe("Propuesta: Tienda Shopify (P-0007) · Güfi");
+    expect(es.body.startsWith("Hola Camila:")).toBe(true);
+    expect(es.body).toContain("https://os.gufi.io/p/abc");
+    expect(shareMessage("en", { contactName: "", title: "X", number: 1, link: "L", sender: "A" }).body.startsWith("Hi,")).toBe(true);
   });
 });

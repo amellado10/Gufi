@@ -4,6 +4,7 @@ import { Building, Plus, Search } from "lucide-react";
 import { requireWorkspace } from "@/lib/auth";
 import { can } from "@/lib/roles";
 import { formatMoment } from "@/lib/format";
+import { whatsappLink } from "@/lib/phone";
 import { listClients } from "@/features/clients/queries";
 import { CLIENT_STATUS, CLIENT_STATUSES, type ClientStatus } from "@/features/clients/status";
 import { getRoster, memberLabel } from "@/features/workspace/roster";
@@ -88,6 +89,7 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
               <tr>
                 <Th>Client</Th>
                 <Th>Status</Th>
+                <Th>Contact</Th>
                 <Th>Open projects</Th>
                 <Th>Owner</Th>
                 <Th className="text-right">Updated</Th>
@@ -109,6 +111,34 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
                       <Badge tone={s.tone} icon={s.icon}>
                         {s.label}
                       </Badge>
+                    </Td>
+                    <Td className="text-[13px]">
+                      {(() => {
+                        const list = c.contacts ?? [];
+                        const pc = list.find((x) => x.is_primary) ?? list[0];
+                        if (!pc) return <span className="text-muted-foreground">—</span>;
+                        const wa = whatsappLink(pc.phone, "");
+                        return (
+                          <span className="block min-w-0">
+                            <span className="block truncate font-medium">{pc.full_name}</span>
+                            <span className="flex flex-wrap gap-x-3 text-xs">
+                              {pc.email && (
+                                <a href={`mailto:${pc.email}`} className="truncate text-link hover:underline">
+                                  {pc.email}
+                                </a>
+                              )}
+                              {pc.phone &&
+                                (wa ? (
+                                  <a href={wa} target="_blank" rel="noopener noreferrer" className="text-link hover:underline" aria-label={`WhatsApp ${pc.phone}`}>
+                                    {pc.phone}
+                                  </a>
+                                ) : (
+                                  <span className="text-muted-foreground">{pc.phone}</span>
+                                ))}
+                            </span>
+                          </span>
+                        );
+                      })()}
                     </Td>
                     <Td className="tabular">{open}</Td>
                     <Td className="text-muted-foreground">{c.owner_id ? (people.get(c.owner_id) ?? "—") : "—"}</Td>

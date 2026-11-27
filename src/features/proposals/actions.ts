@@ -12,7 +12,7 @@ import { can } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 import { parseMoneyToCents } from "@/features/pipeline/model";
 import type { FormState } from "@/components/ui/form";
-import { DEFAULT_MILESTONES, editorPayload, parsePercent, parseQuantity, readyToSend } from "./model";
+import { DEFAULT_MILESTONES, editorPayload, parsePercent, parseQuantity, readyToSend, totals } from "./model";
 
 const NO_PERMISSION = "Your role can't change proposals. Ask an admin, project manager or marketing.";
 
@@ -165,22 +165,97 @@ export async function sendProposalAction(proposalId: string, versionId: string):
   await supabase.from("proposals").update({ status: "sent" }).eq("id", proposalId);
   await supabase.from("proposal_share_links").insert({ organization_id: org, version_id: versionId, token: randomBytes(32).toString("base64url"), created_by: ws.user.id });
 
-  // The deal moves to "Proposal sent" if it was at an earlier open stage.
-  if (proposal.opportunity_id) {
-    const [{ data: deal }, { data: stages }] = await Promise.all([
-      supabase.from("opportunities").select("stage_id").eq("id", proposal.opportunity_id).maybeSingle(),
-      supabase.from("pipeline_stages").select("id, key, kind, position").eq("organization_id", org),
-    ]);
-    const target = stages?.find((s) => s.key === "proposal_sent");
-    const current = stages?.find((s) => s.id === deal?.stage_id);
-    if (target && current && current.kind === "open" && current.position < target.position) {
-      await supabase.from("opportunities").update({ stage_id: target.id }).eq("id", proposal.opportunity_id);
-    }
-  }
+  // Every proposal that goes out is in the pipeline: link (or create) its deal at "Proposal sent",
+  // with the deal's value set to what was proposed (before ITBMS, add-ons excluded).
+  const { data: full } = await supabase.from("proposal_items").select("id, unit_price_cents, quantity_hundredths, optional").eq("version_id", versionId);
+  const subtotal = totals((full ?? []).map((i) => ({ ...i, unit_price_cents: Number(i.unit_price_cents) })), 0).subtotal;
+  const { data: p } = await supabase.from("proposals").select("id, title, client_id, opportunity_id").eq("id", proposalId).single();
+  if (p) await ensureDealForProposal(supabase, org, ws.user.id, p, subtotal, "proposal_sent");
   revalidatePath(`/proposals/${proposalId}`);
   revalidatePath("/proposals");
   revalidatePath("/pipeline");
   redirect(`/proposals/${proposalId}`);
+}
+
+// ── Pipeline link ───────────────────────────────────────────────────────────
+
+type Supa = Awaited<ReturnType<typeof createClient>>;
+
+// The deal for a proposal: created on first send if the proposal didn't start from a deal, so every
+// proposal that goes out is tracked in the pipeline. Returns the deal id.
+async function ensureDealForProposal(
+  supabase: Supa,
+  org: string,
+  userId: string,
+  proposal: { id: string; title: string; client_id: string; opportunity_id: string | null },
+  subtotalCents: number,
+  stageKey: "proposal_sent" | "won" | "lost",
+  extra: { won_project_id?: string | null; lost_reason?: string | null } = {},
+): Promise<string | null> {
+  const { data: stages } = await supabase.from("pipeline_stages").select("id, key, kind, position").eq("organization_id", org).order("position");
+  const target = stages?.find((st) => st.key === stageKey) ?? stages?.find((st) => st.kind === (stageKey === "proposal_sent" ? "open" : stageKey));
+  if (!target) return null;
+
+  if (proposal.opportunity_id) {
+    const { data: deal } = await supabase.from("opportunities").select("stage_id").eq("id", proposal.opportunity_id).maybeSingle();
+    const current = stages?.find((st) => st.id === deal?.stage_id);
+    if (current?.kind === "open") {
+      // Keep the deal's value in line with what was actually proposed; move it forward, never back.
+      await supabase
+        .from("opportunities")
+        .update({ value_cents: subtotalCents, ...(current.position < target.position && target.kind === "open" ? { stage_id: target.id } : {}) })
+        .eq("id", proposal.opportunity_id);
+    }
+    return proposal.opportunity_id;
+  }
+  const { data: deal, error } = await supabase
+    .from("opportunities")
+    .insert({
+      organization_id: org,
+      client_id: proposal.client_id,
+      title: proposal.title,
+      stage_id: target.id,
+      value_cents: subtotalCents,
+      owner_id: userId,
+      source: "other",
+      source_detail: "Created from a proposal",
+      created_by: userId,
+      ...(target.kind === "won" ? { won_project_id: extra.won_project_id ?? null } : {}),
+      ...(target.kind === "lost" ? { lost_reason: extra.lost_reason ?? "Proposal declined" } : {}),
+    })
+    .select("id")
+    .single();
+  if (error || !deal) return null;
+  await supabase.from("proposals").update({ opportunity_id: deal.id }).eq("id", proposal.id);
+  return deal.id;
+}
+
+// For proposals sent before they were linked to a deal.
+export async function addProposalToPipelineAction(proposalId: string) {
+  const ws = await requireWorkspace();
+  if (!can(ws.role, "pipeline:write")) redirect("/no-access?reason=permission");
+  const supabase = await createClient();
+  const org = ws.organization.id;
+  const { data: proposal } = await supabase.from("proposals").select("id, title, client_id, opportunity_id, status, project_id").eq("organization_id", org).eq("id", proposalId).maybeSingle();
+  if (!proposal) redirect("/proposals");
+  if (proposal.opportunity_id) redirect(`/pipeline/${proposal.opportunity_id}`);
+
+  const { data: versions } = await supabase.from("proposal_versions").select("id, version, status, tax_rate_bps, locked_at").eq("proposal_id", proposalId).order("version", { ascending: false });
+  const sent = versions?.find((v) => v.locked_at);
+  if (!sent) redirect(`/proposals/${proposalId}`);
+  const [{ data: items }, { data: response }] = await Promise.all([
+    supabase.from("proposal_items").select("id, unit_price_cents, quantity_hundredths, optional").eq("version_id", sent.id),
+    supabase.from("proposal_responses").select("decision, subtotal_cents, decline_reason").eq("version_id", sent.id).maybeSingle(),
+  ]);
+  const subtotal = response?.subtotal_cents ?? totals((items ?? []).map((i) => ({ ...i, unit_price_cents: Number(i.unit_price_cents) })), sent.tax_rate_bps).subtotal;
+  const stage = response?.decision === "accepted" ? "won" : response?.decision === "declined" ? "lost" : "proposal_sent";
+  const dealId = await ensureDealForProposal(supabase, org, ws.user.id, proposal, Number(subtotal), stage, {
+    won_project_id: proposal.project_id,
+    lost_reason: response?.decline_reason ? `Proposal declined: ${response.decline_reason}` : "Proposal declined",
+  });
+  revalidatePath(`/proposals/${proposalId}`);
+  revalidatePath("/pipeline");
+  redirect(dealId ? `/pipeline/${dealId}` : `/proposals/${proposalId}`);
 }
 
 // ── Revise ──────────────────────────────────────────────────────────────────

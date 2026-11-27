@@ -21,6 +21,7 @@ export default async function NewClientPage() {
           owners={roster.map((m) => ({ value: m.user_id, label: memberLabel(m) }))}
           cancelHref="/clients"
           submitLabel="Create client"
+          withContact
         />
       </Card>
     </>

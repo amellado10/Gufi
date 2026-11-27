@@ -278,3 +278,19 @@ export const publicProposal = z.object({
     .optional(),
 });
 export type PublicProposal = z.infer<typeof publicProposal>;
+
+// Messages for sharing the client link by email or WhatsApp (sent from the person's own email/phone).
+export function shareMessage(lang: Lang, p: { contactName: string; title: string; number: number; link: string; sender: string }) {
+  const first = p.contactName.replace(/\s*\(.*?\)\s*/g, " ").trim().split(/\s+/)[0] || "";
+  const n = proposalNumber(p.number);
+  if (lang === "es") {
+    return {
+      subject: `Propuesta: ${p.title} (${n}) · Güfi`,
+      body: `Hola${first ? ` ${first}` : ""}:\n\nLe compartimos nuestra propuesta "${p.title}" (${n}). Puede revisarla y aceptarla aquí:\n${p.link}\n\nQuedamos atentos a cualquier consulta.\n\nSaludos,\n${p.sender}\nGüfi`,
+    };
+  }
+  return {
+    subject: `Proposal: ${p.title} (${n}) · Güfi`,
+    body: `Hi${first ? ` ${first}` : ""},\n\nHere's our proposal "${p.title}" (${n}). You can review and accept it here:\n${p.link}\n\nHappy to answer any questions.\n\nBest,\n${p.sender}\nGüfi`,
+  };
+}

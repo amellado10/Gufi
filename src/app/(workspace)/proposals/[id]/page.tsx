@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CircleCheck, CircleX, Eye, FolderKanban, GitBranch, Link2, Target } from "lucide-react";
+import { CircleCheck, CircleX, Eye, FolderKanban, GitBranch, Link2, Mail, MessageCircle, Target } from "lucide-react";
 import { z } from "zod";
 import { requirePermission } from "@/lib/auth";
 import { can } from "@/lib/roles";
@@ -9,9 +9,11 @@ import { formatMoment, todayIn } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { siteUrl } from "@/lib/env";
 import { aiConfigured } from "@/lib/ai/claude";
-import { createLinkAction, newRevisionAction, revokeLinkAction } from "@/features/proposals/actions";
+import { addProposalToPipelineAction, createLinkAction, newRevisionAction, revokeLinkAction } from "@/features/proposals/actions";
+import { listContacts } from "@/features/clients/queries";
+import { whatsappLink } from "@/lib/phone";
 import { ProposalEditor } from "@/features/proposals/editor";
-import { proposalNumber, SECTION_KEYS, STATUS_META } from "@/features/proposals/model";
+import { proposalNumber, SECTION_KEYS, shareMessage, STATUS_META } from "@/features/proposals/model";
 import { getProposal, sectionsOf } from "@/features/proposals/queries";
 import { CopyLink } from "@/features/proposals/small";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +38,9 @@ export default async function ProposalPage({ params }: PageProps<"/proposals/[id
   const activeLink = b.links.find((l) => l.version_id === latest.id && !l.revoked_at);
   const response = b.responses.find((r) => r.version_id === latest.id);
   const fmt = (c: number | null) => (c === null ? "—" : formatMoney({ cents: c, currency: latest.currency }));
+  const contacts = activeLink && !response ? await listContacts(ws.organization.id, proposal.client_id) : [];
+  const linkUrl = activeLink ? `${siteUrl()}/p/${activeLink.token}` : "";
+  const sender = ws.profile.full_name?.trim() || ws.profile.email;
 
   return (
     <>
@@ -133,7 +138,57 @@ export default async function ProposalPage({ params }: PageProps<"/proposals/[id
               <Card title="Client link" description="Anyone with this link can view and respond. Revoke it to stop access.">
                 {activeLink ? (
                   <div className="space-y-3">
-                    <CopyLink url={`${siteUrl()}/p/${activeLink.token}`} />
+                    <CopyLink url={linkUrl} />
+                    {canWrite && (
+                      <div className="rounded-md border border-border">
+                        <p className="border-b border-border px-4 py-2.5 text-[13px] font-semibold">Send to the client</p>
+                        {contacts.length === 0 ? (
+                          <p className="px-4 py-3 text-sm text-muted-foreground">
+                            {proposal.client?.name} has no contacts yet.{" "}
+                            <Link href={`/clients/${proposal.client_id}`} className="font-medium text-link hover:underline">
+                              Add one
+                            </Link>{" "}
+                            to send by email or WhatsApp.
+                          </p>
+                        ) : (
+                          <ul className="divide-y divide-border">
+                            {contacts.map((c) => {
+                              const msg = shareMessage(proposal.language, { contactName: c.full_name, title: proposal.title, number: proposal.number, link: linkUrl, sender });
+                              const wa = whatsappLink(c.phone, msg.body);
+                              return (
+                                <li key={c.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-sm">
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block font-medium">{c.full_name}</span>
+                                    <span className="block truncate text-xs text-muted-foreground">{[c.email, c.phone].filter(Boolean).join(" · ") || "No email or phone"}</span>
+                                  </span>
+                                  {c.email && (
+                                    <a
+                                      href={`mailto:${c.email}?subject=${encodeURIComponent(msg.subject)}&body=${encodeURIComponent(msg.body)}`}
+                                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border-strong bg-card px-3 text-[13px] font-semibold hover:bg-accent"
+                                    >
+                                      <Mail aria-hidden className="size-3.5" /> Email
+                                    </a>
+                                  )}
+                                  {wa && (
+                                    <a
+                                      href={wa}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border-strong bg-card px-3 text-[13px] font-semibold hover:bg-accent"
+                                    >
+                                      <MessageCircle aria-hidden className="size-3.5" /> WhatsApp
+                                    </a>
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                        <p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
+                          Opens your email or WhatsApp with the message and link ready, in the proposal&apos;s language. Review it and press send.
+                        </p>
+                      </div>
+                    )}
                     {canWrite && (
                       <form action={revokeLinkAction.bind(null, id, activeLink.id)}>
                         <button type="submit" className="text-sm font-medium text-status-critical hover:underline">
@@ -151,6 +206,17 @@ export default async function ProposalPage({ params }: PageProps<"/proposals/[id
                 ) : (
                   <p className="text-sm text-muted-foreground">No active link.</p>
                 )}
+              </Card>
+            )}
+
+            {canWrite && !proposal.opportunity_id && (
+              <Card title="Not in the pipeline">
+                <form action={addProposalToPipelineAction.bind(null, id)} className="flex flex-wrap items-center gap-3">
+                  <p className="text-sm text-muted-foreground">Track this proposal as a deal, at the stage that matches its status (sent, won or lost), with its value.</p>
+                  <Button type="submit" variant="secondary">
+                    <Target aria-hidden className="size-4" /> Add to pipeline
+                  </Button>
+                </form>
               </Card>
             )}
 

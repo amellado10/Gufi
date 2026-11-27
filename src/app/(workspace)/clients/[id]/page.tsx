@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FolderKanban, Globe, Mail, Pencil, Phone, Plus, Target, Users } from "lucide-react";
+import { FolderKanban, Globe, Mail, MessageCircle, Pencil, Phone, Plus, Target, Users } from "lucide-react";
 import { z } from "zod";
 import { requireWorkspace } from "@/lib/auth";
 import { can } from "@/lib/roles";
@@ -15,6 +15,7 @@ import { PROJECT_STATUS } from "@/features/projects/status";
 import { getRoster, memberLabel } from "@/features/workspace/roster";
 import { listDeals, listStages } from "@/features/pipeline/queries";
 import { formatMoney } from "@/lib/money";
+import { whatsappLink } from "@/lib/phone";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -162,6 +163,12 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
                         <a href={`tel:${c.phone}`} className="inline-flex items-center gap-1 text-[13px] text-link hover:underline">
                           <Phone aria-hidden className="size-3.5" />
                           {c.phone}
+                        </a>
+                      )}
+                      {c.phone && whatsappLink(c.phone, "") && (
+                        <a href={whatsappLink(c.phone, "")!} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[13px] text-link hover:underline">
+                          <MessageCircle aria-hidden className="size-3.5" />
+                          WhatsApp
                         </a>
                       )}
                       {can(ws.role, "contacts:write") && (

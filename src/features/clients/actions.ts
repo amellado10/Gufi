@@ -8,7 +8,7 @@ import { friendlyDbError } from "@/lib/db-errors";
 import { can } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "@/components/ui/form";
-import { clientInput, contactInput, normalizeWebsite } from "./schema";
+import { clientInput, contactFromClientForm, contactInput, normalizeWebsite } from "./schema";
 
 const values = (form: FormData) => Object.fromEntries([...form.entries()].map(([k, v]) => [k, String(v)]));
 const NO_PERMISSION: FormState = { message: "Your role can't change clients. Ask an admin or project manager." };
@@ -23,17 +23,30 @@ export async function createClientAction(_prev: FormState, form: FormData): Prom
   if (!can(ws.role, "clients:write")) return NO_PERMISSION;
 
   const parsed = clientInput.safeParse(values(form));
-  if (!parsed.success) return { errors: z.flattenError(parsed.error).fieldErrors, values: values(form) };
+  const contact = contactFromClientForm(values(form));
+  if (!parsed.success || contact.errors) {
+    return { errors: { ...(parsed.success ? {} : z.flattenError(parsed.error).fieldErrors), ...(contact.errors ?? {}) }, values: values(form) };
+  }
+  if (contact.contact && !contact.contact.full_name) return { errors: { contact_name: ["Add the contact's name."] }, values: values(form) };
   const site = normalizeWebsite(parsed.data.website);
   if ("error" in site) return { errors: { website: [site.error] }, values: values(form) };
 
   const supabase = await createClient();
+  if (contact.contact?.email) {
+    const { data: taken } = await supabase.from("contacts").select("id").eq("organization_id", ws.organization.id).ilike("email", contact.contact.email).maybeSingle();
+    if (taken) return { errors: { contact_email: ["Someone with this email is already a contact."] }, values: values(form) };
+  }
   const { data, error } = await supabase
     .from("clients")
     .insert({ ...parsed.data, ...site, status: parsed.data.status as never, organization_id: ws.organization.id, created_by: ws.user.id })
     .select("id")
     .single();
   if (error) return { message: duplicateMessage(error) ?? friendlyDbError(error, "client"), values: values(form) };
+  if (contact.contact) {
+    await supabase
+      .from("contacts")
+      .insert({ ...contact.contact, is_primary: true, client_id: data.id, organization_id: ws.organization.id, created_by: ws.user.id });
+  }
 
   revalidatePath("/clients");
   redirect(`/clients/${data.id}`);

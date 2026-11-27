@@ -184,6 +184,147 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      project_finances: {
+        Row: {
+          project_id: string;
+          organization_id: string;
+          currency: string;
+          contract_cents: number;
+          tax_rate_bps: number | null;
+          tax_cents: number | null;
+          collected_cents: number | null;
+          outstanding_cents: number;
+          invoice_ref: string | null;
+          payment_due_date: string | null;
+          origination_bps: number;
+          delivery_bps: number;
+          as_of: string;
+          source: string;
+          notes: string | null;
+        } & Timestamps;
+        Insert: {
+          project_id: string;
+          organization_id: string;
+          currency?: string;
+          contract_cents: number;
+          tax_rate_bps?: number | null;
+          collected_cents?: number | null;
+          outstanding_cents: number;
+          invoice_ref?: string | null;
+          payment_due_date?: string | null;
+          origination_bps?: number;
+          delivery_bps?: number;
+          as_of: string;
+          source: string;
+          notes?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["project_finances"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "project_finances_organization_id_project_id_fkey";
+            columns: ["organization_id", "project_id"];
+            isOneToOne: true;
+            referencedRelation: "projects";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
+      partners: {
+        Row: { id: string; organization_id: string; full_name: string; email: string | null; user_id: string | null } & Timestamps;
+        Insert: { id?: string; organization_id: string; full_name: string; email?: string | null; user_id?: string | null };
+        Update: { full_name?: string; email?: string | null; user_id?: string | null };
+        Relationships: [];
+      };
+      project_splits: {
+        Row: { organization_id: string; project_id: string; partner_id: string; role: Database["public"]["Enums"]["split_role"]; share_bps: number };
+        Insert: { organization_id: string; project_id: string; partner_id: string; role: Database["public"]["Enums"]["split_role"]; share_bps: number };
+        Update: { share_bps?: number };
+        Relationships: [
+          {
+            foreignKeyName: "project_splits_organization_id_partner_id_fkey";
+            columns: ["organization_id", "partner_id"];
+            isOneToOne: false;
+            referencedRelation: "partners";
+            referencedColumns: ["organization_id", "id"];
+          },
+          {
+            foreignKeyName: "project_splits_organization_id_project_id_fkey";
+            columns: ["organization_id", "project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
+      partner_payouts: {
+        Row: {
+          id: string;
+          organization_id: string;
+          partner_id: string;
+          amount_cents: number;
+          currency: string;
+          paid_month: string | null;
+          description: string;
+          source: string;
+          import_key: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          partner_id: string;
+          amount_cents: number;
+          currency?: string;
+          paid_month?: string | null;
+          description: string;
+          source: string;
+          import_key?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["partner_payouts"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "partner_payouts_organization_id_partner_id_fkey";
+            columns: ["organization_id", "partner_id"];
+            isOneToOne: false;
+            referencedRelation: "partners";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
+      financial_snapshots: {
+        Row: {
+          id: string;
+          organization_id: string;
+          key: string;
+          title: string;
+          basis: "accrual" | "cash";
+          period_start: string;
+          period_end: string;
+          reconciled_through: string | null;
+          currency: string;
+          source: string;
+          audience: "finance" | "admins";
+          data: Json;
+          imported_by: string | null;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          organization_id: string;
+          key: string;
+          title: string;
+          basis: "accrual" | "cash";
+          period_start: string;
+          period_end: string;
+          reconciled_through?: string | null;
+          currency?: string;
+          source: string;
+          audience?: "finance" | "admins";
+          data: Json;
+          imported_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["financial_snapshots"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };
@@ -191,6 +332,7 @@ export type Database = {
       org_role: "admin" | "project_manager" | "team" | "finance" | "marketing";
       client_status: "prospect" | "active" | "inactive";
       project_status: "planning" | "active" | "on_hold" | "completed" | "cancelled";
+      split_role: "origination" | "delivery";
     };
     CompositeTypes: { [_ in never]: never };
   };

@@ -31,3 +31,11 @@ export function sumCents(items: Money[]): Money | null {
   }
   return { currency, cents: items.reduce((acc, i) => acc + BigInt(i.cents), BigInt(0)) };
 }
+
+// Rounded to the whole currency unit, for headline tiles ("$13,511"). Tables use formatMoney.
+export function formatMoneyWhole({ cents, currency }: Money, locale = "en-US"): string {
+  const value = Number(typeof cents === "bigint" ? cents : Math.trunc(cents));
+  const whole = Math.round(Math.abs(value) / 100);
+  const out = new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(whole);
+  return value < 0 && whole !== 0 ? `−${out}` : out;
+}

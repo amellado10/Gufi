@@ -30,3 +30,6 @@ next-env.d.ts
 
 # throwaway scripts
 scripts/_tmp*
+
+# local data imports (financial data never goes to git)
+/imports/

@@ -13,7 +13,8 @@
     "db:types": "supabase gen types typescript --linked --schema public > src/types/database.ts",
     "db:push": "supabase db push",
     "bootstrap": "tsx scripts/bootstrap.ts",
-    "invite": "tsx scripts/invite.ts"
+    "invite": "tsx scripts/invite.ts",
+    "import:summary": "tsx scripts/import-summary.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

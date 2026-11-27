@@ -5,6 +5,8 @@ import { requireWorkspace } from "@/lib/auth";
 import { can } from "@/lib/roles";
 import { daysBetween, formatDay, longDay, todayIn } from "@/lib/format";
 import { getOverview } from "@/features/overview/queries";
+import { getCompanySnapshot } from "@/features/finance/queries";
+import { formatMoneyWhole } from "@/lib/money";
 import { PROJECT_STATUS } from "@/features/projects/status";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
@@ -29,7 +31,11 @@ function Stat({ label, value, hint, href, tone }: { label: string; value: number
 export default async function OverviewPage() {
   const ws = await requireWorkspace();
   const today = todayIn(ws.organization.timezone);
-  const o = await getOverview(ws.organization.id, today);
+  const [o, money] = await Promise.all([
+    getOverview(ws.organization.id, today),
+    can(ws.role, "finance:read") ? getCompanySnapshot(ws.organization.id) : Promise.resolve(null),
+  ]);
+  const whole = (cents: number) => formatMoneyWhole({ cents, currency: ws.organization.default_currency });
   const firstName = (ws.profile.full_name ?? "").split(" ")[0];
   const isEmpty = o.activeClients + o.prospects + o.openProjects === 0;
 
@@ -116,15 +122,40 @@ export default async function OverviewPage() {
             </Card>
 
             <div className="space-y-6">
-              {(ws.role === "admin" || ws.role === "finance") && (
-                <Card title="Money">
-                  <div className="flex gap-3 text-sm">
-                    <Wallet aria-hidden className="mt-0.5 size-4 shrink-0 text-brand" />
-                    <p className="text-muted-foreground">
-                      Revenue, cash, receivables and margins appear here once invoicing and finance are built (roadmap phase 4). Nothing is estimated
-                      in the meantime.
-                    </p>
-                  </div>
+              {can(ws.role, "finance:read") && (
+                <Card title="Money, year to date" description={money ? `QuickBooks snapshot, ${formatDay(money.period_end)}. Not live.` : undefined}>
+                  {money ? (
+                    <>
+                      <dl className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <dt className="text-xs font-semibold text-muted-foreground">Revenue</dt>
+                          <dd className="tabular text-lg font-bold">{whole(money.data.headline.revenue_cents)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs font-semibold text-muted-foreground">Net result</dt>
+                          <dd className={`tabular text-lg font-bold ${money.data.headline.net_result_cents < 0 ? "text-status-critical" : ""}`}>
+                            {whole(money.data.headline.net_result_cents)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs font-semibold text-muted-foreground">To collect</dt>
+                          <dd className="tabular text-lg font-bold">{whole(money.data.headline.receivables_cents)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs font-semibold text-muted-foreground">In the bank</dt>
+                          <dd className="tabular text-lg font-bold">{whole(money.data.headline.bank_balance_cents)}</dd>
+                        </div>
+                      </dl>
+                      <Link href="/finance" className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-link hover:text-link-hover hover:underline">
+                        <Wallet aria-hidden className="size-4" /> Open Finance
+                      </Link>
+                    </>
+                  ) : (
+                    <div className="flex gap-3 text-sm">
+                      <Wallet aria-hidden className="mt-0.5 size-4 shrink-0 text-brand" />
+                      <p className="text-muted-foreground">Company figures appear here once a report from the accounting system is imported. Nothing is estimated.</p>
+                    </div>
+                  )}
                 </Card>
               )}
               <Card title="Shortcuts">

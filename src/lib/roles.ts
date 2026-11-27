@@ -16,10 +16,10 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
-  admin: "Full access to the workspace, settings and audit history.",
-  project_manager: "Clients, contacts and every project; creates projects and assigns the team.",
+  admin: "Full access, including company finances, partner split and pay, settings and audit history.",
+  project_manager: "Clients, contacts and every project (with contract figures); creates projects and assigns the team.",
   team: "Only the projects they're assigned to, and those projects' clients.",
-  finance: "Reads clients, contacts and every project. Finance tools arrive in a later phase.",
+  finance: "Reads clients, contacts and every project, project finances and company financial reports. Not partner pay.",
   marketing: "Clients and contacts (leads). Marketing tools arrive in a later phase.",
 };
 
@@ -31,6 +31,9 @@ const PERMISSIONS = {
   "projects:read-all": ["admin", "project_manager", "finance"],
   "projects:write": ["admin", "project_manager"],
   "projects:assign": ["admin", "project_manager"],
+  "finance:read": ["admin", "finance"],
+  "projects:finances": ["admin", "finance", "project_manager"],
+  "partners:read": ["admin"],
   "settings:manage": ["admin"],
   "audit:read": ["admin"],
 } as const satisfies Record<string, readonly Role[]>;

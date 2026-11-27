@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pencil, UserMinus } from "lucide-react";
+import { CircleCheck, Clock, Pencil, UserMinus } from "lucide-react";
 import { z } from "zod";
 import { requireWorkspace } from "@/lib/auth";
 import { can, ROLE_LABELS } from "@/lib/roles";
@@ -11,6 +11,8 @@ import { AssignForm } from "@/features/projects/assign-form";
 import { getProjectDetail } from "@/features/projects/queries";
 import { PROJECT_STATUS, PROJECT_STATUSES } from "@/features/projects/status";
 import { getRoster, memberLabel } from "@/features/workspace/roster";
+import { getProjectFinance, getProjectSplit } from "@/features/finance/queries";
+import { formatMoney } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,8 +24,15 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
   const ws = await requireWorkspace();
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
-  const [project, roster] = await Promise.all([getProjectDetail(ws.organization.id, id), getRoster(ws.organization.id)]);
+  const canSeeFinances = can(ws.role, "projects:finances");
+  const [project, roster, finance] = await Promise.all([
+    getProjectDetail(ws.organization.id, id),
+    getRoster(ws.organization.id),
+    canSeeFinances ? getProjectFinance(ws.organization.id, id) : Promise.resolve(null),
+  ]);
   if (!project) notFound();
+  const split = finance && can(ws.role, "partners:read") ? await getProjectSplit(ws.organization.id, id, finance) : null;
+  const money = (cents: number | bigint) => formatMoney({ cents, currency: finance?.currency ?? ws.organization.default_currency });
 
   const s = PROJECT_STATUS[project.status];
   const today = todayIn(ws.organization.timezone);
@@ -116,6 +125,83 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
                   );
                 })}
               </div>
+            </Card>
+          )}
+
+          {finance && (
+            <Card
+              title="Money"
+              description={`From the ${formatDay(finance.as_of)} import (QuickBooks). Not live.`}
+              action={
+                finance.outstanding_cents > 0 ? (
+                  <Badge tone="warning" icon={Clock}>
+                    {money(finance.outstanding_cents)} to collect
+                  </Badge>
+                ) : (
+                  <Badge tone="good" icon={CircleCheck}>
+                    Nothing to collect
+                  </Badge>
+                )
+              }
+            >
+              <dl className="grid gap-4 text-sm sm:grid-cols-3">
+                <div>
+                  <dt className="text-xs font-semibold text-muted-foreground">Contract (before tax)</dt>
+                  <dd className="tabular">{money(finance.contract_cents)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold text-muted-foreground">ITBMS{finance.tax_rate_bps !== null ? ` ${finance.tax_rate_bps / 100}%` : ""}</dt>
+                  <dd className="tabular">{finance.tax_cents !== null ? money(finance.tax_cents) : <span className="text-muted-foreground">Not in source</span>}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold text-muted-foreground">Total</dt>
+                  <dd className="tabular">{finance.tax_cents !== null ? money(finance.contract_cents + finance.tax_cents) : "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold text-muted-foreground">Collected</dt>
+                  <dd className="tabular">{finance.collected_cents !== null ? money(finance.collected_cents) : <span className="text-muted-foreground">Not in source</span>}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold text-muted-foreground">To collect</dt>
+                  <dd className="tabular font-semibold">{money(finance.outstanding_cents)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold text-muted-foreground">Invoice</dt>
+                  <dd>
+                    {finance.invoice_ref ?? "—"}
+                    {finance.payment_due_date && <span className="block text-xs text-muted-foreground">Due {formatDay(finance.payment_due_date, today)}</span>}
+                  </dd>
+                </div>
+              </dl>
+              {finance.notes && <p className="mt-4 border-t border-border pt-4 text-[13px] text-muted-foreground">{finance.notes}</p>}
+            </Card>
+          )}
+
+          {split && finance && (
+            <Card title="Split · 15 / 60 / 25" description="On the contract before tax, payable as it's collected. Admins only." padded={false}>
+              <ul className="divide-y divide-border text-sm">
+                {(["origination", "delivery"] as const).map((role) => {
+                  const lines = split.lines.filter((l) => l.role === role);
+                  const bps = role === "origination" ? split.policy.originationBps : split.policy.deliveryBps;
+                  return (
+                    <li key={role} className="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3">
+                      <span>
+                        <span className="font-semibold">
+                          {bps / 100}% {role === "origination" ? "brought the client" : "did the work"}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {lines.length ? lines.map((l) => `${l.partnerId}${l.shareBps < 10000 ? ` (${l.shareBps / 100}%)` : ""} ${money(l.cents)}`).join(" · ") : "Not assigned"}
+                        </span>
+                      </span>
+                      <span className="tabular font-semibold">{money(role === "origination" ? split.pools.origination : split.pools.delivery)}</span>
+                    </li>
+                  );
+                })}
+                <li className="flex items-baseline justify-between gap-2 bg-muted px-5 py-3">
+                  <span className="font-semibold">{(10000 - split.policy.originationBps - split.policy.deliveryBps) / 100}% stays with Güfi</span>
+                  <span className="tabular font-semibold">{money(split.pools.company)}</span>
+                </li>
+              </ul>
             </Card>
           )}
 

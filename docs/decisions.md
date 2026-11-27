@@ -30,3 +30,23 @@
 - Custom SMTP provider for Supabase Auth emails.
 - AI model provider.
 - Accounting system of record (QuickBooks or native) before the finance phase.
+
+## 2026-11-27: Finance snapshot from the 2026 partners' summary
+
+- **QuickBooks Online (Gufi S.A.) stays the system of record.** Güfi OS stores imported,
+  dated, source-labeled figures (`financial_snapshots`, `project_finances`); it is not a ledger.
+  Every screen says "imported snapshot, not live".
+- **Per-project finances** (`project_finances`): contract before tax, ITBMS rate (7% where the
+  source gives it; null = not in source), collected, outstanding, invoice ref, payment due date.
+  A database check enforces outstanding = contract + tax − collected whenever all are known.
+- **The 15/60/25 split is first-class:** `partners` (may exist before they have an account),
+  `project_splits` (who brought / who did, with shares), `partner_payouts`. Amounts are computed
+  with BigInt half-up rounding (`src/features/finance/split.ts`), tested against the PDF.
+- **Who sees what:** project figures → admin, finance, project manager. Partner split and pay →
+  admins only (owner decision: visible to all admins). Company snapshot → admin and finance.
+  The delivery team and marketing see no money.
+- **Imports:** `npm run import:summary -- --file imports/<file>.json [--apply]`. Dry run by
+  default; consistency checks against the source's own totals; idempotent. Files in `imports/`
+  are gitignored so financial data never reaches GitHub.
+- **Pending:** invite Daniel, Camila (partners) and Ernesto when the owner says so; link their
+  accounts to their partner rows.

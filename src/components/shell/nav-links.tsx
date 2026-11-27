@@ -24,6 +24,7 @@ const NAV: Item[] = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/clients", label: "Clients", icon: Building },
   { href: "/projects", label: "Projects", icon: FolderKanban },
+  { href: "/finance", label: "Finance", icon: Wallet, roles: ["admin", "finance"] },
   { href: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },
 ];
 
@@ -32,7 +33,6 @@ const PLANNED: Item[] = [
   { href: "#proposals", label: "Proposals", icon: FileText, roles: ["admin", "project_manager", "marketing"] },
   { href: "#tasks", label: "Tasks", icon: ListTodo },
   { href: "#calendar", label: "Calendar", icon: Calendar },
-  { href: "#finance", label: "Finance", icon: Wallet, roles: ["admin", "finance"] },
   { href: "#marketing", label: "Marketing", icon: Megaphone, roles: ["admin", "marketing"] },
   { href: "#shopify", label: "Shopify intelligence", icon: ShoppingBag, roles: ["admin", "project_manager", "team"] },
 ];

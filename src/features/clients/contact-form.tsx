@@ -4,14 +4,22 @@ import { useActionState, useEffect, useRef } from "react";
 import { SubmitButton } from "@/components/ui/button";
 import { FormMessage, TextField, type FormState } from "@/components/ui/form";
 
-export function ContactForm({ action }: { action: (prev: FormState, form: FormData) => Promise<FormState> }) {
+export function ContactForm({
+  action,
+  defaults,
+  submitLabel = "Add contact",
+}: {
+  action: (prev: FormState, form: FormData) => Promise<FormState>;
+  defaults?: Record<string, string | null>;
+  submitLabel?: string;
+}) {
   const [state, formAction] = useActionState(action, undefined);
   const form = useRef<HTMLFormElement>(null);
   useEffect(() => {
-    if (state?.ok) form.current?.reset();
-  }, [state]);
+    if (state?.ok && !defaults) form.current?.reset();
+  }, [state, defaults]);
   const e = state?.errors ?? {};
-  const v = (k: string) => (state?.ok ? "" : (state?.values?.[k] ?? ""));
+  const v = (k: string) => (state?.ok && !defaults ? "" : (state?.values?.[k] ?? defaults?.[k] ?? ""));
   return (
     <form ref={form} action={formAction} className="space-y-4" noValidate>
       <FormMessage state={state} />
@@ -21,8 +29,8 @@ export function ContactForm({ action }: { action: (prev: FormState, form: FormDa
         <TextField label="Email" name="email" type="email" defaultValue={v("email")} error={e.email} />
         <TextField label="Phone" name="phone" type="tel" defaultValue={v("phone")} error={e.phone} />
       </div>
-      <SubmitButton variant="secondary" size="sm" pendingLabel="Adding…">
-        Add contact
+      <SubmitButton variant={defaults ? "primary" : "secondary"} size={defaults ? "md" : "sm"} pendingLabel="Saving…">
+        {submitLabel}
       </SubmitButton>
     </form>
   );

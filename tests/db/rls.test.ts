@@ -245,3 +245,17 @@ describe("project completion", () => {
     });
   });
 });
+
+describe("deleting an organization", () => {
+  it("removes it and everything in it, including its audit log", async () => {
+    const o = (await one<{ id: string }>(`insert into organizations (name, slug) values ('Temp', 'temp-org') returning id`)).id;
+    const user = await createUser(db, "temp@example.com");
+    await db.query(`insert into memberships (organization_id, user_id, role) values ($1, $2, 'admin')`, [o, user]);
+    const c = (await one<{ id: string }>(`insert into clients (organization_id, name) values ($1, 'Temp client') returning id`, [o])).id;
+    await db.query(`insert into contacts (organization_id, client_id, full_name) values ($1, $2, 'X')`, [o, c]);
+    await db.query(`delete from clients where organization_id = $1`, [o]); // clients with projects are protected; none here
+    await db.query(`delete from organizations where id = $1`, [o]);
+    expect(await count(`select * from audit_logs where organization_id = $1`, [o])).toBe(0);
+    expect(await count(`select * from memberships where organization_id = $1`, [o])).toBe(0);
+  });
+});

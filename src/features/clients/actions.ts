@@ -81,3 +81,35 @@ export async function addContactAction(clientId: string, _prev: FormState, form:
   revalidatePath(`/clients/${clientId}`);
   return { ok: true, message: `${parsed.data.full_name} was added.` };
 }
+
+export async function updateContactAction(clientId: string, contactId: string, _prev: FormState, form: FormData): Promise<FormState> {
+  const ws = await requireWorkspace();
+  if (!can(ws.role, "contacts:write")) return { message: "Your role can't edit contacts." };
+  const parsed = contactInput.safeParse(values(form));
+  if (!parsed.success) return { errors: z.flattenError(parsed.error).fieldErrors, values: values(form) };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("contacts")
+    .update({ ...parsed.data, notes: null })
+    .eq("organization_id", ws.organization.id)
+    .eq("client_id", clientId)
+    .eq("id", contactId)
+    .select("id");
+  if (error) {
+    const message = error.code === "23505" ? "Someone with this email is already a contact." : friendlyDbError(error, "contact");
+    return { message, values: values(form) };
+  }
+  if (!data?.length) return { message: "That contact doesn't exist or you can't edit it." };
+  revalidatePath(`/clients/${clientId}`);
+  redirect(`/clients/${clientId}`);
+}
+
+export async function deleteContactAction(clientId: string, contactId: string) {
+  const ws = await requireWorkspace();
+  if (!can(ws.role, "contacts:write")) redirect("/no-access?reason=permission");
+  const supabase = await createClient();
+  const { error } = await supabase.from("contacts").delete().eq("organization_id", ws.organization.id).eq("client_id", clientId).eq("id", contactId);
+  if (error) throw new Error(friendlyDbError(error, "contact"));
+  revalidatePath(`/clients/${clientId}`);
+  redirect(`/clients/${clientId}`);
+}

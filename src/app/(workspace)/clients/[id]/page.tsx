@@ -144,7 +144,12 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
                   {contacts.map((c) => (
                     <li key={c.id} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-3">
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold">{c.full_name}</span>
+                        <span className="block text-sm font-semibold">
+                          {c.full_name}
+                          {c.email?.endsWith("@example.com") && (
+                            <span className="ml-2 rounded border border-status-warning/40 px-1.5 text-[10px] font-semibold text-status-warning">Placeholder</span>
+                          )}
+                        </span>
                         {c.title && <span className="block text-xs text-muted-foreground">{c.title}</span>}
                       </span>
                       {c.email && (
@@ -158,6 +163,11 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
                           <Phone aria-hidden className="size-3.5" />
                           {c.phone}
                         </a>
+                      )}
+                      {can(ws.role, "contacts:write") && (
+                        <Link href={`/clients/${id}/contacts/${c.id}`} className="text-[13px] font-medium text-link hover:underline">
+                          Edit
+                        </Link>
                       )}
                     </li>
                   ))}

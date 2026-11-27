@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Wordmark } from "@/components/brand/logo";
-import { buttonClass } from "@/components/ui/button";
+import { buttonClass } from "@/components/ui/button-styles";
 import { signOut } from "@/app/auth/actions";
 import Link from "next/link";
 

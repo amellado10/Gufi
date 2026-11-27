@@ -61,17 +61,16 @@ See [security.md](security.md) for what each can see.
 
 ## 4. GitHub
 
-The local repository is on branch `main` with no remote yet. Create an empty private repository
-on GitHub, then:
-
-```bash
-git remote add origin git@github.com:<owner>/gufi-os.git
-git push -u origin main
-```
+Repository: **https://github.com/amellado10/Gufi** (branch `main`). The remote URL includes the
+`amellado10` user (`https://amellado10@github.com/amellado10/Gufi.git`) so git picks that
+account's saved credential rather than another GitHub login on the same Mac.
 
 ## 5. Vercel
 
-1. Import the GitHub repository in Vercel (framework: Next.js; defaults are fine).
+1. The Vercel project **`gufi`** (team Fast Media Group) is connected to the repository; every push
+   to `main` deploys to production, other branches get preview URLs. `vercel.json` sets the
+   framework to Next.js and `package.json` pins Node 24.
+   (`gufi-pty` was also connected to the same repo; disconnect it so pushes don't deploy twice.)
 2. **Settings → Environment Variables** for Preview and Production:
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`.
    Do **not** add `SUPABASE_SECRET_KEY`: the deployed app doesn't need it.

@@ -29,8 +29,10 @@ Nothing below has been done yet: each step needs someone with access to those ac
   (invitation only; the app also never creates users on sign-in).
 - **Authentication → URL Configuration**: Site URL = your app URL (`http://localhost:3000` locally,
   the Vercel URL in production). Add both to **Redirect URLs**.
-- **Authentication → Email Templates**: the app verifies links on the server at `/auth/confirm`.
-  Change the link in these templates:
+- **Authentication → Email Templates**: the app accepts Supabase's default links too (tokens in
+  the URL fragment are finished in the browser on `/sign-in`; `?code=` links on `/auth/confirm`),
+  so the defaults work. Recommended anyway, because the link is then verified on the server at
+  `/auth/confirm`:
 
   | Template | Link |
   | --- | --- |

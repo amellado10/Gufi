@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Wordmark } from "@/components/brand/logo";
 import { getUser } from "@/lib/auth";
 import { safeNextPath } from "@/lib/safe-redirect";
+import { EmailLinkSession } from "./email-link-session";
 import { SignInForm } from "./sign-in-form";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -34,7 +35,9 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
               That link is invalid or has expired. Request a new one below.
             </p>
           )}
-          <SignInForm next={next} />
+          <EmailLinkSession next={next}>
+            <SignInForm next={next} />
+          </EmailLinkSession>
         </div>
       </div>
     </main>

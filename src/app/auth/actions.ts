@@ -37,6 +37,16 @@ export async function sendSignInLink(_prev: FormState, form: FormData): Promise<
   return { ok: true, message: "If that email belongs to a Güfi OS account, a sign-in link is on its way.", values: { email: parsed.data } };
 }
 
+export async function sendPasswordReset(_prev: FormState, form: FormData): Promise<FormState> {
+  const parsed = email.safeParse(form.get("email"));
+  if (!parsed.success) return { errors: { email: [parsed.error.issues[0].message] }, values: { email: String(form.get("email") ?? "") } };
+
+  const supabase = await createClient();
+  await supabase.auth.resetPasswordForEmail(parsed.data, { redirectTo: `${siteUrl()}/auth/confirm?next=${encodeURIComponent("/auth/set-password")}` });
+  // Same answer whether or not the account exists.
+  return { ok: true, message: "If that email belongs to a Güfi OS account, a link to set your password is on its way.", values: { email: parsed.data } };
+}
+
 export async function setPassword(_prev: FormState, form: FormData): Promise<FormState> {
   const parsed = z
     .object({

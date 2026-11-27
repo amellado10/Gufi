@@ -73,7 +73,8 @@ export const importFile = z.object({
         payment_due_date: z.iso.date().optional(),
         notes: z.string().max(2000).optional(),
       }),
-      splits: z.array(z.object({ partner: label, role: splitRole, share_bps: z.number().int().min(1).max(10000) })),
+      // percent_bps = % of the contract before tax (1500 = 15%)
+      splits: z.array(z.object({ partner: label, role: splitRole, percent_bps: z.number().int().min(1).max(10000) })),
     }),
   ),
   payouts: z.array(

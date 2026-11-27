@@ -1,6 +1,6 @@
 // Consistency checks for an import file, run before anything is written.
 // "error" blocks the import; "note" is shown but allowed (e.g. rounding in the source).
-import { partnerAmounts } from "./split";
+import { partnerAmounts, splitProblems } from "./split";
 import type { CompanySnapshotData, ImportFile } from "./snapshot";
 
 export type Check = { level: "ok" | "note" | "error"; message: string };
@@ -26,9 +26,8 @@ export function checkImport(file: ImportFile): Check[] {
   for (const p of file.projects) {
     if (!clientNames.has(p.client)) checks.push({ level: "error", message: `Project "${p.name}" refers to unknown client "${p.client}"` });
     for (const s of p.splits) if (!partnerNames.has(s.partner)) checks.push({ level: "error", message: `Project "${p.name}" refers to unknown partner "${s.partner}"` });
-    for (const role of ["origination", "delivery"] as const) {
-      const total = sum(p.splits.filter((s) => s.role === role).map((s) => s.share_bps));
-      if (total !== 10000) checks.push({ level: "error", message: `Project "${p.name}": ${role} shares add up to ${total / 100}%, not 100%` });
+    for (const problem of splitProblems(p.splits.map((s) => ({ partnerId: s.partner, role: s.role, percentBps: s.percent_bps })))) {
+      checks.push({ level: "error", message: `Project "${p.name}": ${problem}` });
     }
     const f = p.finance;
     if (f.tax_rate_bps !== null && f.collected_cents !== null) {
@@ -63,7 +62,7 @@ export function partnerBalances(file: Pick<ImportFile, "projects" | "payouts" | 
   for (const p of file.projects) {
     const amounts = partnerAmounts(
       p.finance.contract_cents,
-      p.splits.map((s) => ({ partnerId: s.partner, role: s.role, shareBps: s.share_bps })),
+      p.splits.map((s) => ({ partnerId: s.partner, role: s.role, percentBps: s.percent_bps })),
     );
     for (const a of amounts) rows.get(a.partnerId)![a.role] += a.cents;
   }

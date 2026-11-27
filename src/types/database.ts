@@ -196,8 +196,6 @@ export type Database = {
           outstanding_cents: number;
           invoice_ref: string | null;
           payment_due_date: string | null;
-          origination_bps: number;
-          delivery_bps: number;
           as_of: string;
           source: string;
           notes: string | null;
@@ -212,8 +210,6 @@ export type Database = {
           outstanding_cents: number;
           invoice_ref?: string | null;
           payment_due_date?: string | null;
-          origination_bps?: number;
-          delivery_bps?: number;
           as_of: string;
           source: string;
           notes?: string | null;
@@ -236,9 +232,9 @@ export type Database = {
         Relationships: [];
       };
       project_splits: {
-        Row: { organization_id: string; project_id: string; partner_id: string; role: Database["public"]["Enums"]["split_role"]; share_bps: number };
-        Insert: { organization_id: string; project_id: string; partner_id: string; role: Database["public"]["Enums"]["split_role"]; share_bps: number };
-        Update: { share_bps?: number };
+        Row: { organization_id: string; project_id: string; partner_id: string; role: Database["public"]["Enums"]["split_role"]; percent_bps: number };
+        Insert: { organization_id: string; project_id: string; partner_id: string; role: Database["public"]["Enums"]["split_role"]; percent_bps: number };
+        Update: { percent_bps?: number };
         Relationships: [
           {
             foreignKeyName: "project_splits_organization_id_partner_id_fkey";

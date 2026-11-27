@@ -1,6 +1,6 @@
 // Access and integrity tests for the finance tables (migration 0002).
 import { beforeAll, describe, expect, it } from "vitest";
-import { as, createTestDb, createUser, type TestDb } from "./harness";
+import { applyMigrations, as, createTestDb, createUser, type TestDb } from "./harness";
 
 let db: TestDb;
 const u = {} as Record<"admin" | "pm" | "team" | "finance" | "marketing" | "adminB", string>;
@@ -29,7 +29,7 @@ beforeAll(async () => {
   partnerD = (await one<{ id: string }>(`insert into partners (organization_id, full_name) values ($1, 'Daniel') returning id`, [org])).id;
   partnerC = (await one<{ id: string }>(`insert into partners (organization_id, full_name) values ($1, 'Camila') returning id`, [org])).id;
   partnerB = (await one<{ id: string }>(`insert into partners (organization_id, full_name) values ($1, 'Someone Else') returning id`, [orgB])).id;
-  await db.query(`insert into project_splits (organization_id, project_id, partner_id, role, share_bps) values ($1, $2, $3, 'origination', 10000)`, [org, project, partnerD]);
+  await db.query(`insert into project_splits (organization_id, project_id, partner_id, role, percent_bps) values ($1, $2, $3, 'origination', 1500)`, [org, project, partnerD]);
   await db.query(`insert into partner_payouts (organization_id, partner_id, amount_cents, paid_month, description, source) values ($1, $2, 86670, '2026-06-01', 'June', 'test')`, [org, partnerC]);
   await db.query(
     `insert into financial_snapshots (organization_id, key, title, basis, period_start, period_end, source, data) values ($1, 'test-2026', 'Test', 'accrual', '2026-01-01', '2026-11-25', 'test', '{}')`,
@@ -48,14 +48,19 @@ describe("tax and balance math", () => {
   it("rejects an outstanding balance that doesn't add up", async () => {
     await expect(db.query(`update project_finances set outstanding_cents = 100 where project_id = $1`, [project])).rejects.toThrow(/check constraint/);
   });
-  it("rejects split shares over 100%", async () => {
+  it("caps whoever brought the client at 15% and the whole split at 100%", async () => {
     await expect(
-      db.query(`insert into project_splits (organization_id, project_id, partner_id, role, share_bps) values ($1, $2, $3, 'origination', 1)`, [org, project, partnerC]),
-    ).rejects.toThrow(/exceed 100%/);
+      db.query(`insert into project_splits (organization_id, project_id, partner_id, role, percent_bps) values ($1, $2, $3, 'origination', 1)`, [org, project, partnerC]),
+    ).rejects.toThrow(/15%/);
+    await db.query(`insert into project_splits (organization_id, project_id, partner_id, role, percent_bps) values ($1, $2, $3, 'delivery', 8000)`, [org, project, partnerC]);
+    await expect(
+      db.query(`insert into project_splits (organization_id, project_id, partner_id, role, percent_bps) values ($1, $2, $3, 'delivery', 600)`, [org, project, partnerD]),
+    ).rejects.toThrow(/more than 100%/);
+    await db.query(`delete from project_splits where project_id = $1 and role = 'delivery'`, [project]);
   });
   it("can't split a project with a partner from another organization", async () => {
     await expect(
-      db.query(`insert into project_splits (organization_id, project_id, partner_id, role, share_bps) values ($1, $2, $3, 'delivery', 10000)`, [org, project, partnerB]),
+      db.query(`insert into project_splits (organization_id, project_id, partner_id, role, percent_bps) values ($1, $2, $3, 'delivery', 6000)`, [org, project, partnerB]),
     ).rejects.toThrow(/foreign key/);
   });
 });
@@ -131,5 +136,29 @@ describe("who sees what", () => {
       await expect(db.query(`select * from project_finances`)).rejects.toThrow(/permission denied/);
       await expect(db.query(`select * from partner_payouts`)).rejects.toThrow(/permission denied/);
     });
+  });
+});
+
+describe("migration 0008: existing splits convert to % of the contract", () => {
+  it("keeps every amount (15% pool → 15%; half of the 60% pool → 30%)", async () => {
+    const old = await createTestDb({ until: "20261127000008" });
+    const q = async <T>(sql: string, params: unknown[] = []) => (await old.query<T>(sql, params)).rows[0];
+    const o = (await q<{ id: string }>(`insert into organizations (name, slug) values ('Güfi', 'gufi') returning id`)).id;
+    const c = (await q<{ id: string }>(`insert into clients (organization_id, name) values ($1, 'Reve') returning id`, [o])).id;
+    const p = (await q<{ id: string }>(`insert into projects (organization_id, client_id, name) values ($1, $2, 'Reve') returning id`, [o, c])).id;
+    await old.query(`insert into project_finances (project_id, organization_id, contract_cents, outstanding_cents, as_of, source) values ($1, $2, 185000, 0, '2026-11-25', 't')`, [p, o]);
+    const ids: string[] = [];
+    for (const n of ["Daniel", "Adrián", "Camila"]) ids.push((await q<{ id: string }>(`insert into partners (organization_id, full_name) values ($1, $2) returning id`, [o, n])).id);
+    await old.query(
+      `insert into project_splits (organization_id, project_id, partner_id, role, share_bps) values ($1, $2, $3, 'origination', 10000), ($1, $2, $4, 'delivery', 5000), ($1, $2, $5, 'delivery', 5000)`,
+      [o, p, ...ids],
+    );
+    await applyMigrations(old, { from: "20261127000008" });
+    const rows = (await old.query<{ role: string; percent_bps: number }>(`select role::text as role, percent_bps from project_splits order by role::text, percent_bps`)).rows;
+    expect(rows).toEqual([
+      { role: "origination", percent_bps: 1500 },
+      { role: "delivery", percent_bps: 3000 },
+      { role: "delivery", percent_bps: 3000 },
+    ].sort((a, b) => a.role.localeCompare(b.role) || a.percent_bps - b.percent_bps));
   });
 });

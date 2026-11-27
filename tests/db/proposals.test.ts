@@ -150,7 +150,7 @@ describe("acceptance", () => {
     expect(Number(f.tax_cents)).toBe(17150);
     expect(Number(f.outstanding_cents)).toBe(262150);
     expect(f.notes).toBe("Payment schedule: 50% Deposit (On signing); 50% Balance (On delivery)");
-    expect(await count(`select * from project_splits where project_id = $1 and partner_id = $2 and role = 'origination'`, [p.project_id, partner])).toBe(1);
+    expect(await count(`select * from project_splits where project_id = $1 and partner_id = $2 and role = 'origination' and percent_bps = 1500`, [p.project_id, partner])).toBe(1);
     const d = await one<{ kind: string; won_project_id: string; value_cents: number }>(
       `select s.kind, o.won_project_id, o.value_cents from opportunities o join pipeline_stages s on s.id = o.stage_id where o.id = $1`,
       [deal],

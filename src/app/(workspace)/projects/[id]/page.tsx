@@ -12,6 +12,8 @@ import { getProjectDetail } from "@/features/projects/queries";
 import { PROJECT_STATUS, PROJECT_STATUSES } from "@/features/projects/status";
 import { getRoster, memberLabel } from "@/features/workspace/roster";
 import { getProjectFinance, getProjectSplit } from "@/features/finance/queries";
+import { SplitEditor } from "@/features/finance/split-editor";
+import { listPartnerOptions } from "@/features/pipeline/queries";
 import { formatMoney } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
@@ -32,6 +34,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
   ]);
   if (!project) notFound();
   const split = finance && can(ws.role, "partners:read") ? await getProjectSplit(ws.organization.id, id, finance) : null;
+  const partnerOptions = split ? await listPartnerOptions(ws.organization.id) : [];
   const money = (cents: number | bigint) => formatMoney({ cents, currency: finance?.currency ?? ws.organization.default_currency });
 
   const s = PROJECT_STATUS[project.status];
@@ -178,30 +181,21 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           )}
 
           {split && finance && (
-            <Card title="Split · 15 / 60 / 25" description="On the contract before tax, payable as it's collected. Admins only." padded={false}>
-              <ul className="divide-y divide-border text-sm">
-                {(["origination", "delivery"] as const).map((role) => {
-                  const lines = split.lines.filter((l) => l.role === role);
-                  const bps = role === "origination" ? split.policy.originationBps : split.policy.deliveryBps;
-                  return (
-                    <li key={role} className="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3">
-                      <span>
-                        <span className="font-semibold">
-                          {bps / 100}% {role === "origination" ? "brought the client" : "did the work"}
-                        </span>
-                        <span className="block text-xs text-muted-foreground">
-                          {lines.length ? lines.map((l) => `${l.partnerId}${l.shareBps < 10000 ? ` (${l.shareBps / 100}%)` : ""} ${money(l.cents)}`).join(" · ") : "Not assigned"}
-                        </span>
-                      </span>
-                      <span className="tabular font-semibold">{money(role === "origination" ? split.pools.origination : split.pools.delivery)}</span>
-                    </li>
-                  );
-                })}
-                <li className="flex items-baseline justify-between gap-2 bg-muted px-5 py-3">
-                  <span className="font-semibold">{(10000 - split.policy.originationBps - split.policy.deliveryBps) / 100}% stays with Güfi</span>
-                  <span className="tabular font-semibold">{money(split.pools.company)}</span>
-                </li>
-              </ul>
+            <Card
+              title="Split"
+              description="15% to whoever brought the client; the rest is split between the people who did the work, and Güfi keeps what's left. On the contract before tax, payable as it's collected. Admins only."
+              padded={false}
+            >
+              <SplitEditor
+                projectId={id}
+                contractCents={finance.contract_cents}
+                currency={finance.currency}
+                partners={partnerOptions}
+                initial={{
+                  origination: split.lines.find((l) => l.role === "origination")?.partnerId ?? null,
+                  team: split.lines.filter((l) => l.role === "delivery").map((l) => ({ partnerId: l.partnerId, percentBps: l.percentBps })),
+                }}
+              />
             </Card>
           )}
 

@@ -71,8 +71,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
     const lines = splits.get(f.project_id) ?? [];
     const amounts = partnerAmounts(
       f.contract_cents,
-      lines.map((l) => ({ partnerId: l.partnerId, role: l.role, shareBps: l.shareBps })),
-      { originationBps: f.origination_bps, deliveryBps: f.delivery_bps },
+      lines.map((l) => ({ partnerId: l.partnerId, role: l.role, percentBps: l.percentBps })),
     );
     return {
       ...f,
@@ -282,11 +281,11 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
 
         {isAdmin && balances && balances.partners.length > 0 && (
           <Card
-            title="Partner split · 15 / 60 / 25"
+            title="Partner split"
             description={
               projectFiltered
                 ? "Earned on the filtered projects. Payments aren't tied to projects, so paid and balance appear only without project filters. Admins only."
-                : "15% to whoever brought the client, 60% to whoever did the work, 25% stays with Güfi. On full contracts before ITBMS, payable as each project is collected. Admins only."
+                : "15% to whoever brought the client; the rest is split per project between the people who did the work, and Güfi keeps what's left. On full contracts before ITBMS, payable as each project is collected. Admins only."
             }
             padded={false}
             className="mt-6"
@@ -299,8 +298,8 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
                   <thead>
                     <tr>
                       <Th>Partner</Th>
-                      <Th className="text-right">15% brought in</Th>
-                      <Th className="text-right">60% did the work</Th>
+                      <Th className="text-right">Brought in (15%)</Th>
+                      <Th className="text-right">Did the work</Th>
                       <Th className="text-right">Earned</Th>
                     </tr>
                   </thead>
@@ -322,8 +321,8 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
                   <thead>
                     <tr>
                       <Th>Partner</Th>
-                      <Th className="text-right">15% brought in</Th>
-                      <Th className="text-right">60% did the work</Th>
+                      <Th className="text-right">Brought in (15%)</Th>
+                      <Th className="text-right">Did the work</Th>
                       <Th className="text-right">Earned</Th>
                       <Th className="text-right">Paid</Th>
                       <Th className="text-right">Balance</Th>

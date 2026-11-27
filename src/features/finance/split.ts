@@ -1,37 +1,56 @@
-// The Güfi revenue split: of each contract (before tax), 15% to whoever brought the client
-// ("origination"), 60% to whoever did the work ("delivery"), and the rest stays with Güfi.
-// All math is integer cents with BigInt; amounts round half-up to the cent.
+// The Güfi revenue split, per project, on the contract before tax:
+//  - 15% to whoever brought the client (fixed; it stays with Güfi when Güfi brought it or nobody did)
+//  - the rest is split per project between the people who did the work (custom percentages)
+//  - Güfi keeps whatever isn't assigned.
+// Each line is a percentage of the contract in basis points (3000 = 30%). Integer cents, BigInt,
+// half-up rounding; Güfi's amount is the exact remainder, so the parts always add up to the contract.
 
 export type SplitRole = "origination" | "delivery";
-export type SplitShare = { partnerId: string; role: SplitRole; shareBps: number };
-export type SplitPolicy = { originationBps: number; deliveryBps: number };
+export type SplitLine = { partnerId: string; role: SplitRole; percentBps: number };
 
-export const DEFAULT_POLICY: SplitPolicy = { originationBps: 1500, deliveryBps: 6000 };
+export const ORIGINATION_BPS = 1500;
+const TEN_THOUSAND = BigInt(10_000);
 
 const big = (n: number | bigint) => (typeof n === "bigint" ? n : BigInt(Math.trunc(n)));
 
-// value * numerator / denominator, rounded half-up (values are non-negative).
-export function mulDivRound(value: bigint, numerator: bigint, denominator: bigint): bigint {
-  if (value < BigInt(0) || numerator < BigInt(0)) throw new Error("Split amounts must be non-negative");
-  return (value * numerator * BigInt(2) + denominator) / (denominator * BigInt(2));
-}
-
-// Pools for one contract.
-export function splitPools(contractCents: number | bigint, policy: SplitPolicy = DEFAULT_POLICY) {
+// contract × percent, rounded half-up to the cent.
+export function percentOf(contractCents: number | bigint, percentBps: number): bigint {
   const c = big(contractCents);
-  const origination = mulDivRound(c, BigInt(policy.originationBps), BigInt(10_000));
-  const delivery = mulDivRound(c, BigInt(policy.deliveryBps), BigInt(10_000));
-  return { origination, delivery, company: c - origination - delivery };
+  if (c < BigInt(0) || percentBps < 0) throw new Error("Split amounts must be non-negative");
+  return (c * BigInt(percentBps) * BigInt(2) + TEN_THOUSAND) / (TEN_THOUSAND * BigInt(2));
 }
 
-// Each partner's amount on one project.
-export function partnerAmounts(contractCents: number | bigint, shares: SplitShare[], policy: SplitPolicy = DEFAULT_POLICY) {
-  const c = big(contractCents);
-  return shares.map((s) => {
-    const roleBps = BigInt(s.role === "origination" ? policy.originationBps : policy.deliveryBps);
-    // contract × role% × person's share of the role, in one rounding step
-    return { ...s, cents: mulDivRound(c, roleBps * BigInt(s.shareBps), BigInt(100_000_000)) };
-  });
+export function partnerAmounts(contractCents: number | bigint, lines: SplitLine[]) {
+  return lines.map((l) => ({ ...l, cents: percentOf(contractCents, l.percentBps) }));
 }
 
-export const centsToNumber = (c: bigint) => Number(c); // safe: agency-sized amounts
+// The whole split of one contract: each person's amount and what Güfi keeps.
+export function splitContract(contractCents: number | bigint, lines: SplitLine[]) {
+  const amounts = partnerAmounts(contractCents, lines);
+  const assignedBps = lines.reduce((a, l) => a + l.percentBps, 0);
+  const assigned = amounts.reduce((a, l) => a + l.cents, BigInt(0));
+  return {
+    lines: amounts,
+    companyBps: 10_000 - assignedBps,
+    company: big(contractCents) - assigned,
+    originationBps: lines.filter((l) => l.role === "origination").reduce((a, l) => a + l.percentBps, 0),
+    deliveryBps: lines.filter((l) => l.role === "delivery").reduce((a, l) => a + l.percentBps, 0),
+  };
+}
+
+// Problems with a split before saving (the database enforces the same limits).
+export function splitProblems(lines: SplitLine[]): string[] {
+  const problems: string[] = [];
+  const origination = lines.filter((l) => l.role === "origination").reduce((a, l) => a + l.percentBps, 0);
+  const total = lines.reduce((a, l) => a + l.percentBps, 0);
+  if (origination > ORIGINATION_BPS) problems.push("Whoever brought the client gets 15%, not more.");
+  if (total > 10_000) problems.push(`The split adds up to ${total / 100}%, more than 100% of the contract.`);
+  if (lines.some((l) => l.percentBps <= 0)) problems.push("Every person needs a percentage above 0.");
+  const seen = new Set<string>();
+  for (const l of lines) {
+    const key = `${l.role}:${l.partnerId}`;
+    if (seen.has(key)) problems.push("Each person appears once in the team.");
+    seen.add(key);
+  }
+  return [...new Set(problems)];
+}

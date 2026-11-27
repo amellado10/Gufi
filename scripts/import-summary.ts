@@ -72,7 +72,7 @@ async function main() {
   console.log(`  ${"Total".padEnd(42)} ${usd(contracts).padStart(11)} ${"".padStart(11)} ${usd(outstanding).padStart(12)}`);
   console.log(`  (+ = new client, ++ = new client and project)`);
 
-  console.log(`\nPartner split (15% brought in · 60% did the work)`);
+  console.log(`\nPartner split (15% brought in · team · Güfi keeps the rest)`);
   for (const b of partnerBalances(file)) {
     console.log(`  ${b.name.padEnd(8)} owed ${usd(b.owed).padStart(10)}  (15%: ${usd(b.origination)}, 60%: ${usd(b.delivery)})  paid ${usd(b.paid).padStart(10)}  balance ${usd(b.balance).padStart(10)}`);
   }
@@ -136,7 +136,7 @@ async function main() {
     await must(supabase.from("project_splits").delete().eq("project_id", projectId));
     await must(
       supabase.from("project_splits").insert(
-        p.splits.map((s) => ({ organization_id: org.id, project_id: projectId!, partner_id: partnerIds.get(key(s.partner))!, role: s.role, share_bps: s.share_bps })),
+        p.splits.map((s) => ({ organization_id: org.id, project_id: projectId!, partner_id: partnerIds.get(key(s.partner))!, role: s.role, percent_bps: s.percent_bps })),
       ),
     );
   }

@@ -6,14 +6,22 @@ import { PGlite } from "@electric-sql/pglite";
 
 const ROOT = join(__dirname, "..", "..");
 
-export async function createTestDb() {
+// `until`: apply migrations up to (not including) the first file name >= until, e.g. to test how a
+// later migration converts existing data. Use applyMigrations() to continue.
+export async function createTestDb(opts: { until?: string } = {}) {
   const db = new PGlite();
   await db.exec(readFileSync(join(ROOT, "supabase/tests/support/supabase-stub.sql"), "utf8"));
+  await applyMigrations(db, { before: opts.until });
+  return db;
+}
+
+export async function applyMigrations(db: PGlite, range: { from?: string; before?: string } = {}) {
   const dir = join(ROOT, "supabase/migrations");
   for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
+    if (range.from && file < range.from) continue;
+    if (range.before && file >= range.before) continue;
     await db.exec(readFileSync(join(dir, file), "utf8"));
   }
-  return db;
 }
 
 export type TestDb = Awaited<ReturnType<typeof createTestDb>>;

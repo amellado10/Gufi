@@ -15,9 +15,8 @@ export function Wordmark({ className = "", tone = "pink" }: { className?: string
 
 export function HomeLogo({ className = "" }: { className?: string }) {
   return (
-    <Link href="/" aria-label="Güfi OS home" className={`inline-flex items-end gap-2 ${className}`}>
+    <Link href="/" aria-label="Güfi OS home" className={`inline-flex ${className}`}>
       <Wordmark className="h-7" />
-      <span className="pb-0.5 text-xs font-semibold text-muted-foreground">OS</span>
     </Link>
   );
 }

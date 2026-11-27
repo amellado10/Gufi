@@ -2,13 +2,11 @@ import { ChevronsUpDown } from "lucide-react";
 import { switchOrganization } from "@/app/(workspace)/actions";
 import { ROLE_LABELS, type Role } from "@/lib/roles";
 
-// Most people belong to one organization: then this is just a label.
+// Shown only to people in more than one organization.
 export function OrgSwitcher({ current, organizations }: { current: { id: string; name: string }; organizations: { id: string; name: string; role: Role }[] }) {
-  if (organizations.length < 2) {
-    return <p className="truncate text-[13px] font-semibold text-muted-foreground">{current.name}</p>;
-  }
+  if (organizations.length < 2) return null;
   return (
-    <details className="group relative">
+    <details className="group relative mt-2">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md px-2 py-1 text-[13px] font-semibold text-muted-foreground hover:bg-sidebar-accent [&::-webkit-details-marker]:hidden">
         <span className="truncate">{current.name}</span>
         <ChevronsUpDown aria-hidden className="size-3.5" />

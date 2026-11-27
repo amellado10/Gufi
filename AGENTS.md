@@ -27,7 +27,7 @@ The following are proposed defaults, not permission to replace existing dependen
 | Auth / access | Supabase Auth, organization memberships, row-level security (RLS) |
 | Files | Supabase Storage with private buckets and signed URLs where appropriate |
 | Real-time | Supabase Realtime where useful and authorized |
-| AI | OpenAI API, server-side tool calling and retrieval; provider abstraction where useful |
+| AI | **Owner decision (2026-11-27): Anthropic Claude** for AI drafting and the assistant; server-side tool calling and retrieval; provider abstraction where useful |
 | Retrieval | PostgreSQL full-text search and pgvector where needed |
 | Background work | Vercel Cron plus durable database-backed jobs or a suitable job runner |
 | Kanban | dnd-kit or compatible existing library |

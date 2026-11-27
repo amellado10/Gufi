@@ -5,7 +5,7 @@ import { updateSession } from "@/lib/supabase/proxy";
 // First lock (optimistic): refresh the session and send signed-out people to /sign-in.
 // The real authorization is (1) requireWorkspace()/requirePermission() on every page and
 // action and (2) RLS in the database.
-const PUBLIC_PREFIXES = ["/sign-in", "/auth", "/setup"];
+const PUBLIC_PREFIXES = ["/sign-in", "/auth", "/setup", "/p"]; // /p/<token>: client proposal links
 const matches = (path: string, prefixes: string[]) => prefixes.some((p) => path === p || path.startsWith(`${p}/`));
 
 export async function proxy(request: NextRequest) {

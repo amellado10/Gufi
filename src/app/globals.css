@@ -197,3 +197,24 @@ h3,
     scroll-behavior: auto !important;
   }
 }
+
+/* Printing / "Download PDF": only the document, on white, no app chrome. */
+@media print {
+  @page {
+    margin: 14mm 0;
+  }
+  body {
+    background: #fff;
+  }
+  aside,
+  header.lg\:hidden,
+  .no-print {
+    display: none !important;
+  }
+  #main {
+    padding: 0 !important;
+  }
+  .proposal-doc {
+    box-shadow: none !important;
+  }
+}

@@ -32,7 +32,7 @@ export function AiPanel() {
         ref={opener}
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-30 inline-flex h-11 items-center gap-2 rounded-full bg-brand px-4 text-sm font-semibold text-white shadow-pop transition-transform hover:-translate-y-0.5"
+        className="no-print fixed bottom-5 right-5 z-30 inline-flex h-11 items-center gap-2 rounded-full bg-brand px-4 text-sm font-semibold text-white shadow-pop transition-transform hover:-translate-y-0.5"
       >
         <Sparkles aria-hidden className="size-4" />
         Güfi AI

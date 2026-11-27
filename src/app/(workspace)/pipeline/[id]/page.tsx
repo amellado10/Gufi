@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRightLeft, FolderKanban, Mail, MessageSquare, Pencil, Phone, Trash, Users } from "lucide-react";
+import { ArrowRightLeft, FileText, FolderKanban, Mail, MessageSquare, Pencil, Phone, Trash, Users } from "lucide-react";
 import { z } from "zod";
 import { requirePermission } from "@/lib/auth";
 import { can } from "@/lib/roles";
@@ -13,6 +13,8 @@ import { broughtByLabel, followUpState, sourceLabel } from "@/features/pipeline/
 import { getDeal, listActivities, listPartnerOptions, listStages } from "@/features/pipeline/queries";
 import { StageSwitcher } from "@/features/pipeline/stage-switcher";
 import { getRoster, memberLabel } from "@/features/workspace/roster";
+import { proposalNumber, STATUS_META } from "@/features/proposals/model";
+import { listProposals } from "@/features/proposals/queries";
 import { Badge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,12 +29,13 @@ export default async function DealPage({ params }: PageProps<"/pipeline/[id]">) 
   const ws = await requirePermission("pipeline:read");
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
-  const [deal, stages, activities, roster, partners] = await Promise.all([
+  const [deal, stages, activities, roster, partners, proposals] = await Promise.all([
     getDeal(ws.organization.id, id),
     listStages(ws.organization.id),
     listActivities(ws.organization.id, { opportunityId: id }),
     getRoster(ws.organization.id),
     listPartnerOptions(ws.organization.id),
+    listProposals(ws.organization.id, { opportunityId: id }),
   ]);
   if (!deal) notFound();
 
@@ -98,6 +101,38 @@ export default async function DealPage({ params }: PageProps<"/pipeline/[id]">) 
               {stage?.kind === "lost" && deal.lost_reason && <p className="mt-3 text-sm text-muted-foreground">Lost because: {deal.lost_reason}</p>}
             </Card>
           )}
+
+          <Card
+            title="Proposals"
+            padded={false}
+            action={
+              canWrite && stage?.kind === "open" ? (
+                <ButtonLink href={`/proposals/new?deal=${id}`} size="sm">
+                  <FileText aria-hidden className="size-4" /> Create proposal
+                </ButtonLink>
+              ) : undefined
+            }
+          >
+            {proposals.length === 0 ? (
+              <p className="px-5 py-4 text-sm text-muted-foreground">No proposals for this deal yet.</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {proposals.map((p) => (
+                  <li key={p.id}>
+                    <Link href={`/proposals/${p.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 hover:bg-muted">
+                      <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                        {proposalNumber(p.number)} · {p.title}
+                      </span>
+                      <Badge tone={STATUS_META[p.status].tone}>{STATUS_META[p.status].label}</Badge>
+                      <span className="tabular w-24 text-right text-[13px] text-muted-foreground">
+                        {p.totals ? formatMoney({ cents: p.totals.total, currency: deal.currency }) : "—"}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
 
           <Card title="Timeline" description="Notes, calls, emails, meetings and stage changes." padded={false}>
             {canWrite && (

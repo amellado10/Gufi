@@ -442,9 +442,188 @@ export type Database = {
         Update: { body?: string };
         Relationships: [];
       };
+      proposals: {
+        Row: {
+          id: string;
+          organization_id: string;
+          number: number;
+          client_id: string;
+          opportunity_id: string | null;
+          title: string;
+          language: "es" | "en";
+          status: Database["public"]["Enums"]["proposal_status"];
+          project_id: string | null;
+          created_by: string | null;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          organization_id: string;
+          number?: number;
+          client_id: string;
+          opportunity_id?: string | null;
+          title: string;
+          language?: "es" | "en";
+          status?: Database["public"]["Enums"]["proposal_status"];
+          created_by?: string | null;
+        };
+        Update: { title?: string; language?: "es" | "en"; status?: Database["public"]["Enums"]["proposal_status"]; opportunity_id?: string | null };
+        Relationships: [
+          {
+            foreignKeyName: "proposals_organization_id_client_id_fkey";
+            columns: ["organization_id", "client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["organization_id", "id"];
+          },
+          {
+            foreignKeyName: "proposals_organization_id_opportunity_id_fkey";
+            columns: ["organization_id", "opportunity_id"];
+            isOneToOne: false;
+            referencedRelation: "opportunities";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
+      proposal_versions: {
+        Row: {
+          id: string;
+          organization_id: string;
+          proposal_id: string;
+          version: number;
+          status: Database["public"]["Enums"]["proposal_status"];
+          content: Json;
+          currency: string;
+          tax_rate_bps: number;
+          valid_until: string | null;
+          locked_at: string | null;
+          sent_at: string | null;
+          sent_by: string | null;
+          first_viewed_at: string | null;
+          responded_at: string | null;
+          created_by: string | null;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          organization_id: string;
+          proposal_id: string;
+          version: number;
+          status?: Database["public"]["Enums"]["proposal_status"];
+          content?: Json;
+          currency?: string;
+          tax_rate_bps?: number;
+          valid_until?: string | null;
+          created_by?: string | null;
+        };
+        Update: {
+          status?: Database["public"]["Enums"]["proposal_status"];
+          content?: Json;
+          tax_rate_bps?: number;
+          valid_until?: string | null;
+          locked_at?: string | null;
+          sent_at?: string | null;
+          sent_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "proposal_versions_organization_id_proposal_id_fkey";
+            columns: ["organization_id", "proposal_id"];
+            isOneToOne: false;
+            referencedRelation: "proposals";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
+      proposal_items: {
+        Row: {
+          id: string;
+          organization_id: string;
+          version_id: string;
+          position: number;
+          name: string;
+          description: string | null;
+          quantity_hundredths: number;
+          unit_price_cents: number;
+          line_total_cents: number;
+          optional: boolean;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          version_id: string;
+          position: number;
+          name: string;
+          description?: string | null;
+          quantity_hundredths?: number;
+          unit_price_cents: number;
+          optional?: boolean;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      proposal_payment_milestones: {
+        Row: { id: string; organization_id: string; version_id: string; position: number; label: string; percent_bps: number; due: string | null };
+        Insert: { id?: string; organization_id: string; version_id: string; position: number; label: string; percent_bps: number; due?: string | null };
+        Update: never;
+        Relationships: [];
+      };
+      proposal_share_links: {
+        Row: {
+          id: string;
+          organization_id: string;
+          version_id: string;
+          token: string;
+          expires_at: string | null;
+          revoked_at: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: { id?: string; organization_id: string; version_id: string; token: string; expires_at?: string | null; created_by?: string | null };
+        Update: { revoked_at?: string | null; expires_at?: string | null };
+        Relationships: [];
+      };
+      proposal_responses: {
+        Row: {
+          id: string;
+          organization_id: string;
+          version_id: string;
+          decision: "accepted" | "declined";
+          signer_name: string;
+          signer_email: string;
+          signer_title: string | null;
+          decline_reason: string | null;
+          selected_optional_item_ids: string[];
+          subtotal_cents: number | null;
+          tax_cents: number | null;
+          total_cents: number | null;
+          content_hash: string;
+          user_agent: string | null;
+          ip_address: string | null;
+          responded_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      get_shared_proposal: { Args: { p_token: string }; Returns: Json };
+      mark_shared_proposal_viewed: { Args: { p_token: string }; Returns: undefined };
+      respond_to_shared_proposal: {
+        Args: {
+          p_token: string;
+          p_decision: string;
+          p_signer_name: string;
+          p_signer_email: string;
+          p_signer_title?: string | null;
+          p_decline_reason?: string | null;
+          p_selected_optional?: string[];
+          p_user_agent?: string | null;
+          p_ip?: string | null;
+        };
+        Returns: Json;
+      };
+    };
     Enums: {
       org_role: "admin" | "project_manager" | "team" | "finance" | "marketing";
       client_status: "prospect" | "active" | "inactive";
@@ -452,6 +631,7 @@ export type Database = {
       split_role: "origination" | "delivery";
       stage_kind: "open" | "won" | "lost";
       origination_kind: "partner" | "gufi" | "none";
+      proposal_status: "draft" | "sent" | "viewed" | "accepted" | "declined" | "expired" | "superseded";
       lead_source: "referral" | "partner" | "website" | "outbound" | "marketing" | "existing_client" | "other";
       activity_kind: "note" | "call" | "email" | "meeting" | "stage_change";
     };

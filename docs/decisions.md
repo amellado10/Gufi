@@ -50,3 +50,27 @@
   are gitignored so financial data never reaches GitHub.
 - **Pending:** invite Daniel, Camila (partners) and Ernesto when the owner says so; link their
   accounts to their partner rows.
+
+## 2026-11-27: AI provider
+
+- **Claude (Anthropic) is the AI provider** for proposal drafting and the Güfi AI assistant
+  (owner decision). Server-side only, through controlled tools; the API key will be a
+  server-only environment variable. Not connected yet.
+
+## 2026-11-27: Proposal studio
+
+- Proposals belong to a client and optionally a deal; numbered per organization (P-0001).
+  Each has versions; a version is **locked when sent** (database trigger), and changes need a
+  new revision. Sending a revision supersedes the previous one and revokes its link.
+- Content: seven fixed sections (summary, objectives, solution, scope, exclusions, timeline,
+  terms) in Spanish or English per proposal; free-form line items (quantity in hundredths,
+  integer cents, optional add-ons); payment schedule that must add up to 100%; ITBMS 7% or 0%.
+- **Client link** `/p/<token>` (256-bit random token, revocable): no login and no service key.
+  Anonymous visitors can only call `get_shared_proposal`, `mark_shared_proposal_viewed` and
+  `respond_to_shared_proposal`, which return/accept public fields only.
+- **Acceptance** records signer name, email, title, time, user agent, IP and a SHA-256 of the
+  exact version shown, then in the same transaction (once): creates the project, project
+  finances (contract, ITBMS, to collect, payment schedule note), the partner's 15% origination
+  split if the deal names one, moves the deal to Won and the client to Active.
+- "Download PDF" is the browser's print-to-PDF with print styles; a server-rendered PDF can come
+  later. Emailing the link from the app needs custom SMTP. AI drafting (Claude) is next.

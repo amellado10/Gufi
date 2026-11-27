@@ -31,6 +31,8 @@ const PERMISSIONS = {
   "projects:read-all": ["admin", "project_manager", "finance"],
   "projects:write": ["admin", "project_manager"],
   "projects:assign": ["admin", "project_manager"],
+  "pipeline:read": ["admin", "project_manager", "marketing", "finance"],
+  "pipeline:write": ["admin", "project_manager", "marketing"],
   "finance:read": ["admin", "finance"],
   "projects:finances": ["admin", "finance", "project_manager"],
   "partners:read": ["admin"],

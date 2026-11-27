@@ -12,6 +12,7 @@ import {
   Megaphone,
   Settings,
   ShoppingBag,
+  Target,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -23,6 +24,7 @@ type Item = { href: string; label: string; icon: LucideIcon; roles?: Role[] };
 const NAV: Item[] = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/clients", label: "Clients", icon: Building },
+  { href: "/pipeline", label: "Pipeline", icon: Target, roles: ["admin", "project_manager", "marketing", "finance"] },
   { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/finance", label: "Finance", icon: Wallet, roles: ["admin", "finance"] },
   { href: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },

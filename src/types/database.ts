@@ -325,6 +325,121 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["financial_snapshots"]["Insert"]>;
         Relationships: [];
       };
+      pipeline_stages: {
+        Row: {
+          id: string;
+          organization_id: string;
+          key: string;
+          name: string;
+          kind: Database["public"]["Enums"]["stage_kind"];
+          position: number;
+          probability_bps: number;
+          created_at: string;
+        };
+        Insert: never;
+        Update: { name?: string; position?: number; probability_bps?: number };
+        Relationships: [];
+      };
+      opportunities: {
+        Row: {
+          id: string;
+          organization_id: string;
+          client_id: string;
+          contact_id: string | null;
+          title: string;
+          stage_id: string;
+          value_cents: number | null;
+          currency: string;
+          owner_id: string | null;
+          source: Database["public"]["Enums"]["lead_source"];
+          source_detail: string | null;
+          brought_by_partner_id: string | null;
+          expected_close_on: string | null;
+          next_follow_up_on: string | null;
+          closed_on: string | null;
+          lost_reason: string | null;
+          won_project_id: string | null;
+          notes: string | null;
+          created_by: string | null;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          organization_id: string;
+          client_id: string;
+          contact_id?: string | null;
+          title: string;
+          stage_id: string;
+          value_cents?: number | null;
+          currency?: string;
+          owner_id?: string | null;
+          source?: Database["public"]["Enums"]["lead_source"];
+          source_detail?: string | null;
+          brought_by_partner_id?: string | null;
+          expected_close_on?: string | null;
+          next_follow_up_on?: string | null;
+          closed_on?: string | null;
+          lost_reason?: string | null;
+          won_project_id?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+        };
+        Update: Partial<Omit<Database["public"]["Tables"]["opportunities"]["Insert"], "organization_id">>;
+        Relationships: [
+          {
+            foreignKeyName: "opportunities_organization_id_client_id_fkey";
+            columns: ["organization_id", "client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["organization_id", "id"];
+          },
+          {
+            foreignKeyName: "opportunities_organization_id_stage_id_fkey";
+            columns: ["organization_id", "stage_id"];
+            isOneToOne: false;
+            referencedRelation: "pipeline_stages";
+            referencedColumns: ["organization_id", "id"];
+          },
+          {
+            foreignKeyName: "opportunities_contact_fk";
+            columns: ["organization_id", "client_id", "contact_id"];
+            isOneToOne: false;
+            referencedRelation: "contacts";
+            referencedColumns: ["organization_id", "client_id", "id"];
+          },
+          {
+            foreignKeyName: "opportunities_organization_id_brought_by_partner_id_fkey";
+            columns: ["organization_id", "brought_by_partner_id"];
+            isOneToOne: false;
+            referencedRelation: "partners";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
+      activities: {
+        Row: {
+          id: string;
+          organization_id: string;
+          client_id: string;
+          opportunity_id: string | null;
+          kind: Database["public"]["Enums"]["activity_kind"];
+          body: string;
+          occurred_at: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          client_id: string;
+          opportunity_id?: string | null;
+          kind?: Database["public"]["Enums"]["activity_kind"];
+          body: string;
+          occurred_at?: string;
+          created_by?: string | null;
+        };
+        Update: { body?: string };
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };
@@ -333,6 +448,9 @@ export type Database = {
       client_status: "prospect" | "active" | "inactive";
       project_status: "planning" | "active" | "on_hold" | "completed" | "cancelled";
       split_role: "origination" | "delivery";
+      stage_kind: "open" | "won" | "lost";
+      lead_source: "referral" | "partner" | "website" | "outbound" | "marketing" | "existing_client" | "other";
+      activity_kind: "note" | "call" | "email" | "meeting" | "stage_change";
     };
     CompositeTypes: { [_ in never]: never };
   };

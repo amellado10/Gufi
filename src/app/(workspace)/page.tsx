@@ -6,6 +6,8 @@ import { can } from "@/lib/roles";
 import { daysBetween, formatDay, longDay, todayIn } from "@/lib/format";
 import { getOverview } from "@/features/overview/queries";
 import { getCompanySnapshot } from "@/features/finance/queries";
+import { followUpState, weightedValue } from "@/features/pipeline/model";
+import { listDeals, listStages } from "@/features/pipeline/queries";
 import { formatMoneyWhole } from "@/lib/money";
 import { PROJECT_STATUS } from "@/features/projects/status";
 import { Badge } from "@/components/ui/badge";
@@ -31,10 +33,18 @@ function Stat({ label, value, hint, href, tone }: { label: string; value: number
 export default async function OverviewPage() {
   const ws = await requireWorkspace();
   const today = todayIn(ws.organization.timezone);
-  const [o, money] = await Promise.all([
+  const seesPipeline = can(ws.role, "pipeline:read");
+  const [o, money, stages, deals] = await Promise.all([
     getOverview(ws.organization.id, today),
     can(ws.role, "finance:read") ? getCompanySnapshot(ws.organization.id) : Promise.resolve(null),
+    seesPipeline ? listStages(ws.organization.id) : Promise.resolve([]),
+    seesPipeline ? listDeals(ws.organization.id) : Promise.resolve([]),
   ]);
+  const stageById = new Map(stages.map((st) => [st.id, st]));
+  const openDeals = deals.filter((d) => stageById.get(d.stage_id)?.kind === "open");
+  const dueDeals = openDeals
+    .filter((d) => ["overdue", "today"].includes(followUpState(d.next_follow_up_on, today)))
+    .sort((a, b) => (a.next_follow_up_on ?? "").localeCompare(b.next_follow_up_on ?? ""));
   const whole = (cents: number) => formatMoneyWhole({ cents, currency: ws.organization.default_currency });
   const firstName = (ws.profile.full_name ?? "").split(" ")[0];
   const isEmpty = o.activeClients + o.prospects + o.openProjects === 0;
@@ -122,6 +132,52 @@ export default async function OverviewPage() {
             </Card>
 
             <div className="space-y-6">
+              {seesPipeline && (
+                <Card
+                  title="Pipeline"
+                  action={
+                    <Link href="/pipeline" className="text-sm font-medium text-link hover:underline">
+                      Open
+                    </Link>
+                  }
+                >
+                  <dl className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <dt className="text-xs font-semibold text-muted-foreground">Open deals</dt>
+                      <dd className="tabular text-lg font-bold">{openDeals.length}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold text-muted-foreground">Weighted value</dt>
+                      <dd className="tabular text-lg font-bold">
+                        {formatMoneyWhole({
+                          cents: weightedValue(deals.map((d) => ({ value_cents: d.value_cents, probability_bps: stageById.get(d.stage_id)?.probability_bps ?? 0, kind: stageById.get(d.stage_id)?.kind ?? "open" }))),
+                          currency: ws.organization.default_currency,
+                        })}
+                      </dd>
+                    </div>
+                  </dl>
+                  {dueDeals.length > 0 ? (
+                    <div className="mt-4 border-t border-border pt-3">
+                      <p className="mb-2 text-xs font-semibold text-status-critical">
+                        <TriangleExclamationPoint aria-hidden className="mr-1 inline size-3.5" />
+                        {dueDeals.length} follow-up{dueDeals.length === 1 ? "" : "s"} due
+                      </p>
+                      <ul className="space-y-1.5 text-sm">
+                        {dueDeals.slice(0, 5).map((d) => (
+                          <li key={d.id} className="flex items-baseline justify-between gap-2">
+                            <Link href={`/pipeline/${d.id}`} className="truncate font-medium hover:text-link hover:underline">
+                              {d.title}
+                            </Link>
+                            <span className="tabular shrink-0 text-xs text-muted-foreground">{formatDay(d.next_follow_up_on, today)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">No follow-ups due today.</p>
+                  )}
+                </Card>
+              )}
               {can(ws.role, "finance:read") && (
                 <Card title="Money, year to date" description={money ? `QuickBooks snapshot, ${formatDay(money.period_end)}. Not live.` : undefined}>
                   {money ? (

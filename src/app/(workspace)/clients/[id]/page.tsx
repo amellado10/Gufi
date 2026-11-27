@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FolderKanban, Globe, Mail, Pencil, Phone, Plus, Users } from "lucide-react";
+import { FolderKanban, Globe, Mail, Pencil, Phone, Plus, Target, Users } from "lucide-react";
 import { z } from "zod";
 import { requireWorkspace } from "@/lib/auth";
 import { can } from "@/lib/roles";
@@ -13,6 +13,8 @@ import { CLIENT_STATUS } from "@/features/clients/status";
 import { listProjects } from "@/features/projects/queries";
 import { PROJECT_STATUS } from "@/features/projects/status";
 import { getRoster, memberLabel } from "@/features/workspace/roster";
+import { listDeals, listStages } from "@/features/pipeline/queries";
+import { formatMoney } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,12 +28,16 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const canContacts = can(ws.role, "contacts:read");
-  const [client, contacts, projects, roster] = await Promise.all([
+  const seesPipeline = can(ws.role, "pipeline:read");
+  const [client, contacts, projects, roster, deals, stages] = await Promise.all([
     getClientDetail(ws.organization.id, id),
     canContacts ? listContacts(ws.organization.id, id) : Promise.resolve([]),
     listProjects(ws.organization.id, { clientId: id }),
     getRoster(ws.organization.id),
+    seesPipeline ? listDeals(ws.organization.id, { clientId: id }) : Promise.resolve([]),
+    seesPipeline ? listStages(ws.organization.id) : Promise.resolve([]),
   ]);
+  const stageById = new Map(stages.map((st) => [st.id, st]));
   if (!client) notFound();
   const s = CLIENT_STATUS[client.status];
   const owner = roster.find((m) => m.user_id === client.owner_id);
@@ -93,6 +99,41 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
               </ul>
             )}
           </Card>
+
+          {seesPipeline && (
+            <Card
+              title="Deals"
+              padded={false}
+              action={
+                can(ws.role, "pipeline:write") ? (
+                  <Link href={`/pipeline/new?client=${id}`} className="text-sm font-medium text-link hover:underline">
+                    New deal
+                  </Link>
+                ) : undefined
+              }
+            >
+              {deals.length === 0 ? (
+                <EmptyState icon={Target} title="No deals yet" />
+              ) : (
+                <ul className="divide-y divide-border">
+                  {deals.map((d) => {
+                    const st = stageById.get(d.stage_id);
+                    return (
+                      <li key={d.id}>
+                        <Link href={`/pipeline/${d.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5 hover:bg-muted">
+                          <span className="min-w-0 flex-1 truncate text-sm font-semibold">{d.title}</span>
+                          <Badge tone={st?.kind === "won" ? "good" : st?.kind === "lost" ? "neutral" : "info"}>{st?.name}</Badge>
+                          <span className="tabular w-24 text-right text-[13px] text-muted-foreground">
+                            {d.value_cents !== null ? formatMoney({ cents: d.value_cents, currency: d.currency }) : "—"}
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Card>
+          )}
 
           {canContacts && (
             <Card title="Contacts" description="People at this client." padded={false}>

@@ -27,8 +27,8 @@ Nothing below has been done yet: each step needs someone with access to those ac
 
 - **Authentication → Sign In / Providers → Email**: enabled. **Allow new users to sign up: OFF**
   (invitation only; the app also never creates users on sign-in).
-- **Authentication → URL Configuration**: Site URL = your app URL (`http://localhost:3000` locally,
-  the Vercel URL in production). Add both to **Redirect URLs**.
+- **Authentication → URL Configuration**: Site URL = `https://os.gufi.io` (production).
+  Redirect URLs: `https://os.gufi.io/**` and `http://localhost:3000/**`.
 - **Authentication → Email Templates**: the app accepts Supabase's default links too (tokens in
   the URL fragment are finished in the browser on `/sign-in`; `?code=` links on `/auth/confirm`),
   so the defaults work. Recommended anyway, because the link is then verified on the server at
@@ -69,8 +69,8 @@ account's saved credential rather than another GitHub login on the same Mac.
 
 ## 5. Vercel
 
-1. The Vercel project **`gufi`** (team Fast Media Group) is connected to the repository; every push
-   to `main` deploys to production, other branches get preview URLs. `vercel.json` sets the
+1. The Vercel project **`gufi`** (team Fast Media Group) is connected to the repository and serves
+   **https://os.gufi.io** (also `gufi-gamma.vercel.app`); every push to `main` deploys to production, other branches get preview URLs. `vercel.json` sets the
    framework to Next.js and `package.json` pins Node 24.
    (`gufi-pty` was also connected to the same repo; disconnect it so pushes don't deploy twice.)
 2. **Settings → Environment Variables** for Preview and Production:

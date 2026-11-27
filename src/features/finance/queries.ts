@@ -138,3 +138,21 @@ export async function getPartnerBalances(organizationId: string) {
     payouts: (payouts.data ?? []).map((p) => ({ ...p, partner: names.get(p.partner_id) ?? "—" })),
   };
 }
+
+// Every project's split lines (admins only via RLS; others get an empty list).
+export async function listProjectSplits(organizationId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("project_splits")
+    .select("project_id, role, share_bps, partner:partners(id, full_name)")
+    .eq("organization_id", organizationId);
+  if (error) throw new Error(`Could not load the split: ${error.message}`);
+  const byProject = new Map<string, { partnerId: string; partnerName: string; role: "origination" | "delivery"; shareBps: number }[]>();
+  for (const r of (data ?? []) as unknown as { project_id: string; role: "origination" | "delivery"; share_bps: number; partner: { id: string; full_name: string } | null }[]) {
+    if (!r.partner) continue;
+    const list = byProject.get(r.project_id) ?? [];
+    list.push({ partnerId: r.partner.id, partnerName: r.partner.full_name, role: r.role, shareBps: r.share_bps });
+    byProject.set(r.project_id, list);
+  }
+  return byProject;
+}
